@@ -1,0 +1,9 @@
+{
+    "name": "live-update",
+    "description": "Live update the changes in browser without full page reload",
+    "homepage": "https://github.com/channikhabra/meteor-live-update",
+    "author": "Charanjit Singh <ckhabra@gmail.com> (http://channikhabra.github.io)",
+    "version": "0.0.1",
+    "git": "https://github.com/channikhabra/meteor-live-update.git",
+    "packages": {}
+}
