@@ -46,28 +46,29 @@ LiveUpdate = {
         UI.DomRange.insert(UI.render(UI.body).dom, document.body);
     },
     refreshPage: function() {
-        this.updateCss();
-        var url = window.location.origin,
-            html,
-            jsToFetch = [],
-            templateJs;
+        var url = Meteor.absoluteUrl(),
+            codeToCommentOutInEval = [
+                //let's not recreate collections (meteor complains if we try to do so). We can comment it out
+                // since collection would already be created when user first loads the app
+                    /\w*\s*=\s*new Meteor.Collection\(\"\w*\"\)/g
+            ];
 
         // let's ignore package files and only re-eval user created js/templates
-        jsToFetch = LiveUpdateParser.getAllScriptSrc().filter(function(src){return src.indexOf("package") < 0;});
-        _.each(jsToFetch, function(js) {
-            var req = $.get(js);
+        var jsToFetch = LiveUpdateParser.getAllScriptSrc().filter(function(src){return src.indexOf("package") < 0;});
+        _.each(jsToFetch, function(jsFile) {
+            var req = $.get(jsFile);
             req.always(function(res) {
                 //It's strange, the responseText exists on error response not on the success response for compile Template files.
                 // this is why I am using always above instead of success or done
                 //Sometime response object has the required js in res.responseText (in case of compiled template files)
                 // and on other times, it's returned as expected response. Below statement handles that
-                templateJs = typeof res === 'string' ? res : res.responseText;
+                var js = typeof res === 'string' ? res : res.responseText;
                 var templateRegex = /^(Template.__define__\()[\w\W]+(\}\)\);)$/gm;
 
                 //Let's find out if the js is compiled template file. If it is, we take out individual templates
                 // and render them individually neglecting extra code added by meteor in the template, otherwise we eval the whole js.
                 // I assume it is safe since it is already wrapped as a module by meteor
-                var templateSnippets = templateJs.match(templateRegex) ? templateJs.match(templateRegex)[0].split("\n\n") : false;
+                var templateSnippets = js.match(templateRegex) ? js.match(templateRegex)[0].split("\n\n") : false;
                 if (templateSnippets) {
                     _.each(templateSnippets, function(snippet) {
                         var templateName = snippet.match(/^Template.__define__\("(\w+)/)[1];
@@ -76,9 +77,16 @@ LiveUpdate = {
                         delete Template[templateName];
                         eval(snippet);
                     });
-                } else eval(templateJs);
-
-               LiveUpdate._reRenderPage();
+                } else {
+                    _.each(codeToCommentOutInEval, function(rejex) {
+                        js = js.replace(rejex, function(match) {
+                            return "//"+ match;
+                        });
+                    });
+                    eval(js);
+                }
+                LiveUpdate.updateCss();
+                LiveUpdate._reRenderPage();
             });
         });
     }
