@@ -50,7 +50,7 @@ LiveUpdate = {
             codeToCommentOutInEval = [
                 //let's not recreate collections (meteor complains if we try to do so). We can comment it out
                 // since collection would already be created when user first loads the app
-                    /\w*\s*=\s*new Meteor.Collection\(\"\w*\"\)/g
+                    /\w*\s*=\s*new Meteor.Collection\([\'\"](\w|\.)*/g
             ];
 
         // let's ignore package files and only re-eval user created js/templates
@@ -75,7 +75,10 @@ LiveUpdate = {
                         //we need to first delete the already present Template.templateName object because
                         // Template.__define__ won't let us re-create if one is already present
                         delete Template[templateName];
-                        eval(snippet);
+                        //why this? It used to skip evals sometime when eval was used directly
+                        var reval = eval;
+                        // console.log(snippet);
+                        reval(snippet);
                     });
                 } else {
                     _.each(codeToCommentOutInEval, function(rejex) {
