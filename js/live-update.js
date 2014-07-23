@@ -1,29 +1,18 @@
 LiveUpdate = {
-    updateCss: function() {
-        $.get(Meteor.absoluteUrl()).success(function(html) {
-            var cssSrcRegex = /^(?:[\s]*<link rel=\"stylesheet\")\shref=\"(.*)\"(?:>\s*)$/m;
-            var cssSrc = html.match(cssSrcRegex)[1];
-            /*
-             * Problems found with $("link") technique of reloading new css:
-             * 1. It changes CSS instantly (almost) when we run complete this.refreshPage(). I was trying to do it so if CSS is the only thing changed,
-             *    then we could update only css and wont' require full page rewrite/re-eval. But doing that takes 4-5 seconds for new css to load.
-             *    May be we should fall-back to my previous approach of tearing apart document.styleSheets[0] object and recreate it with new rules.
-             */
-            $("link").attr("href", cssSrc);
+    updateCss: function(html) {
+        var cssSrcRegex = /^(?:[\s]*<link rel=\"stylesheet\")\shref=\"(.*)\"(?:>\s*)$/m;
+        var cssSrc = html.match(cssSrcRegex)[1];
+        //i.e css file is not updated
+        if (cssSrc === document.styleSheets[0].href)
+            return false;
 
-            //below commented code cleans up the css file so it can be loaded dynamically.
-            //Original plan was to parse the css obtained via ajax and do document.stylesheets[0].addRule(selector, rule) with all rules.
-            //but I found below method to be more fault tolerant and less prone to errors which I would've brought doing everything manually.
-            //keeping this code just in case the jquery approach doesn't work and I have finish this method
-            // $.get(cssSrc).success(function(css) {
-            //     var sheet = document.styleSheets[0];
-            //     _.each(sheet.cssRules, function(rule) {
-            //         document.styleSheets[0].removeRule(rule);
-            //     });
-            //     console.log(LiveUpdateParser.parseCss(css));
-            // });
-        });
-
+        var oldlink = document.getElementsByTagName("link").item(0);
+        var newlink = document.createElement("link");
+        newlink.setAttribute("rel", "stylesheet");
+        newlink.setAttribute("type", "text/css");
+        newlink.setAttribute("href", cssSrc);
+        document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
+        return true;
     },
     updateTemplateWithHTML: function(name, newHtml) {
         //This method isn't used anywhere either. I made it when I was trying to figure out how to compile templates manually, so I've kept it here for future reference
@@ -44,8 +33,9 @@ LiveUpdate = {
         });
         if(UI.body.contentParts.length > 1) UI.body.contentParts.shift();
         UI.DomRange.insert(UI.render(UI.body).dom, document.body);
+        console.log("PAGE RE-RENDERED");
     },
-    refreshPage: function() {
+    refreshPage: function(html) {
         var url = Meteor.absoluteUrl(),
             codeToCommentOutInEval = [
                 //let's not recreate collections (meteor complains if we try to do so). We can comment it out
@@ -53,8 +43,9 @@ LiveUpdate = {
                     /\w*\s*=\s*new Meteor.Collection\([\'\"](\w|\.)*/g
             ];
 
+
         // let's ignore package files and only re-eval user created js/templates
-        var jsToFetch = LiveUpdateParser.getAllScriptSrc().filter(function(src){return src.indexOf("package") < 0;});
+        var jsToFetch = LiveUpdateParser.getAllScriptSrc(html).filter(function(src){return src.indexOf("package") < 0;});
         _.each(jsToFetch, function(jsFile) {
             var req = $.get(jsFile);
             req.always(function(res) {
@@ -86,9 +77,9 @@ LiveUpdate = {
                             return "//"+ match;
                         });
                     });
-                    eval(js);
+                    var reval = eval;
+                    reval(js);
                 }
-                LiveUpdate.updateCss();
                 LiveUpdate._reRenderPage();
             });
         });
@@ -98,10 +89,13 @@ LiveUpdate = {
 
 LiveUpdateParser = {
     getAllScriptSrc: function(html) {
-        var scripts = document.scripts;
-        return _.uniq(_.compact(_.map(scripts, function(script) {
-            return script.src;
-        })));
+        // yes we could've used document.scripts but when used it takes some time for document.scripts to update to latest code,
+        // like a warmup on app startup
+        var scripts = _.uniq(_.compact(html.match(/<script[\s\w=\"\/\.\?\->]*<\/script>/g)));
+        return(_.map(scripts, function(script) {
+            var srcRegex = /src=\"([\/\w\.\?\-]*)\"/;
+            return script.match(srcRegex)[1];
+        }));
     },
     parseCss: function (css) {
         //this method is not used anywhere. I've kept it here in case we need to manually parse css and update it that way in future.
@@ -133,6 +127,49 @@ LiveUpdateParser = {
 };
 
 
+LiveUpdateCache = {
+    cacheAllScripts: function() {
+        $.get(Meteor.absoluteUrl()).success(function(html) {
+            var allScriptSrc = _.filter(LiveUpdateParser.getAllScriptSrc(html), function(script) {
+                return script.indexOf('/packages/') < 0;
+            });
+            return _.each(allScriptSrc, function(src) {
+                $.get(src).always(function(res) {
+                    var js = typeof res === 'string' ? res : res.responseText;
+                    var templateRegex = /^(Template.__define__\()[\w\W]+(\}\)\);)$/gm;
+                    var templateSnippets = js.match(templateRegex) ? js.match(templateRegex)[0].split("\n\n") : false;
+                    if (templateSnippets) {
+                        _.each(templateSnippets, function(snippet) {
+                            var templateName = snippet.match(/^Template.__define__\("(\w+)/)[1];
+                            LiveUpdateCache.cacheScript(templateName, snippet);
+                        });
+                    } else {
+                        LiveUpdateCache.cacheScript(src, res);
+                    }
+                });
+            });
+        });
+    },
+    cacheTemplate: function(name, script) {
+        this.cache = this.cache || {};
+        this.cache.templates = this.cache.templates || {};
+        this.cache.templates[name] = script;
+    },
+    cacheScript: function(name, script) {
+        this.cache = this.cache || {};
+        this.cache[name] = script;
+    },
+    getCache: function() {
+        var cache = _.clone(this.cache) || false;
+        return cache;
+    },
+    invalid: function(oldCache, newCache, key) {
+        return !_.isEqual(oldCache[key], newCache[key]);
+    }
+};
+
+
+
 // stopping reloads on file changes and calling refreshPage after initial app is loaded,
 // i.e after the user has loaded the app, and has changed the file
 Reload._onMigrate("LiveUpdate", function() {
@@ -144,7 +181,12 @@ Reload._onMigrate("LiveUpdate", function() {
         // reactive computation to make Reload package do its duty and stops that computation after executing it once. But we want to continue receiving notifications
         // on file changes, so we are running our own reactive computation
         Autoupdate.newClientAvailable();
-        LiveUpdate.refreshPage();
+        $.get(Meteor.absoluteUrl()).success(function(html) {
+            //if css file is changed, update css only, otherwise re-eval all js and re-render pageb
+            if (!LiveUpdate.updateCss(html))
+                LiveUpdate.refreshPage(html);
+        });
     });
+
     return [false];
 });
