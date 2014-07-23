@@ -3,7 +3,7 @@ LiveUpdate = {
         var cssSrcRegex = /^(?:[\s]*<link rel=\"stylesheet\")\shref=\"(.*)\"(?:>\s*)$/m;
         var cssSrc = html.match(cssSrcRegex)[1];
         //i.e css file is not updated
-        if (cssSrc === document.styleSheets[0].href)
+        if (Meteor.absoluteUrl().replace(/\/$/, '') + cssSrc === document.styleSheets[0].href)
             return false;
 
         var oldlink = document.getElementsByTagName("link").item(0);
@@ -62,7 +62,18 @@ LiveUpdate = {
                 var templateSnippets = js.match(templateRegex) ? js.match(templateRegex)[0].split("\n\n") : false;
                 if (templateSnippets) {
                     _.each(templateSnippets, function(snippet) {
+
                         var templateName = snippet.match(/^Template.__define__\("(\w+)/)[1];
+
+                        //can't use cache with templates. We need to delete the template and re-create when evaling template events file
+                        //because otherwise it will have multiple events defined for the event. This will be possible once we figure out how to
+                        //unbind events on meteor templates
+                        // if (LiveUpdateCache.invalidTemplate(templateName, snippet)) {
+                        // console.log(templateName, "IS CHANGED");
+                        //cache template
+                        // LiveUpdateCache.cacheTemplate(templateName, snippet);
+
+
                         //we need to first delete the already present Template.templateName object because
                         // Template.__define__ won't let us re-create if one is already present
                         delete Template[templateName];
@@ -70,6 +81,7 @@ LiveUpdate = {
                         var reval = eval;
                         // console.log(snippet);
                         reval(snippet);
+                        // }
                     });
                 } else {
                     _.each(codeToCommentOutInEval, function(rejex) {
@@ -78,7 +90,12 @@ LiveUpdate = {
                         });
                     });
                     var reval = eval;
+                    //can't use cache all the time. We need to re-eval the helpers/events on a template whenever it is re-rendered
+                    // if(LiveUpdateCache.invalidScript(jsFile, js)) {
+                    // console.log(jsFile, "IS CHANGED");
+                    // LiveUpdateCache.cacheScript(jsFile, js);
                     reval(js);
+                    // }
                 }
                 LiveUpdate._reRenderPage();
             });
@@ -128,28 +145,7 @@ LiveUpdateParser = {
 
 
 LiveUpdateCache = {
-    cacheAllScripts: function() {
-        $.get(Meteor.absoluteUrl()).success(function(html) {
-            var allScriptSrc = _.filter(LiveUpdateParser.getAllScriptSrc(html), function(script) {
-                return script.indexOf('/packages/') < 0;
-            });
-            return _.each(allScriptSrc, function(src) {
-                $.get(src).always(function(res) {
-                    var js = typeof res === 'string' ? res : res.responseText;
-                    var templateRegex = /^(Template.__define__\()[\w\W]+(\}\)\);)$/gm;
-                    var templateSnippets = js.match(templateRegex) ? js.match(templateRegex)[0].split("\n\n") : false;
-                    if (templateSnippets) {
-                        _.each(templateSnippets, function(snippet) {
-                            var templateName = snippet.match(/^Template.__define__\("(\w+)/)[1];
-                            LiveUpdateCache.cacheScript(templateName, snippet);
-                        });
-                    } else {
-                        LiveUpdateCache.cacheScript(src, res);
-                    }
-                });
-            });
-        });
-    },
+    //caching won't work until we figure out how to tear-apart and re-render individual templates instead of full page
     cacheTemplate: function(name, script) {
         this.cache = this.cache || {};
         this.cache.templates = this.cache.templates || {};
@@ -163,8 +159,11 @@ LiveUpdateCache = {
         var cache = _.clone(this.cache) || false;
         return cache;
     },
-    invalid: function(oldCache, newCache, key) {
-        return !_.isEqual(oldCache[key], newCache[key]);
+    invalidTemplate: function(templateName, snippet) {
+        return  !_.isEqual(this.getCache().templates ? this.getCache().templates[templateName] : false, snippet);
+    },
+    invalidScript: function(key, script) {
+        return !_.isEqual(this.getCache()[key], script);
     }
 };
 
@@ -183,8 +182,9 @@ Reload._onMigrate("LiveUpdate", function() {
         Autoupdate.newClientAvailable();
         $.get(Meteor.absoluteUrl()).success(function(html) {
             //if css file is changed, update css only, otherwise re-eval all js and re-render pageb
-            if (!LiveUpdate.updateCss(html))
+            if (!LiveUpdate.updateCss(html)) {
                 LiveUpdate.refreshPage(html);
+            }
         });
     });
 
