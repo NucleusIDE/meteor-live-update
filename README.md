@@ -30,12 +30,10 @@ Just start developing your app. It'll come into action when you change something
 I don't know. I don't really know how software work on the developer's side. I am just starting out making some contributions to the Open Source community and am publishing it hoping it'll motivate me to further develop it. 
 
 # Known bugs
-* Template events get triggered twice
-* Template created and destroyed methods get called on new code push (not really a bug but may be something to work on; or may be not)
+* $.template when used in code make the package fail
 
 # Roadmap
 Here're some rough ideas about future work on this. 
-* Remove the template events double trigger bug
 * Update only those files which are changed. For now, this package updates everything whenever anything changes. Be little more smart dude! This is not sexy
 * Templates should update changed parts only. Be little more smart here as well.
 * Develop a somewhat big app and use this package throughout the development
