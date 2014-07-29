@@ -1,4 +1,10 @@
 LiveUpdate = {
+    config: {
+        cssOnly: false
+    },
+    configure: function(options) {
+        _.extend(LiveUpdate.config, options);
+    },
     updateCss: function(html) {
         var cssSrcRegex = /^(?:[\s]*<link rel=\"stylesheet\")\shref=\"(.*)\"(?:>\s*)$/m;
         var cssSrc = html.match(cssSrcRegex)[1];
@@ -182,7 +188,8 @@ Reload._onMigrate("LiveUpdate", function() {
         Autoupdate.newClientAvailable();
         $.get(Meteor.absoluteUrl()).success(function(html) {
             //if css file is changed, update css only, otherwise re-eval all js and re-render pageb
-            if (!LiveUpdate.updateCss(html)) {
+            if (!LiveUpdate.updateCss(html) && !LiveUpdate.config.cssOnly) {
+                console.log("UPDATE JS?", LiveUpdate.config.ccsOnly);
                 LiveUpdate.refreshPage(html);
             }
         });
