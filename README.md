@@ -26,6 +26,19 @@ mrt add live-update
 ##How to use it?
 Just start developing your app. It'll come into action when you change something. It's more or less an intended replacement for Reload package, but it's too young. 
 
+
+##I Want CSS Live update, but no js. It's buggy
+Well, it indeed is for now. Here's what you can do in your app to enable CSS  updates only.
+
+```javsacript
+LiveUpdate.configure({
+    cssOnly: true
+})
+```
+
+This will update CSS live without any page refreshes, but when you change js or html, it will do usual "hot reload" from meteor, keeping your session vars and stuff safe while doing a reload.
+
+
 ##It's "too young" right? Then why are you releasing it?
 I don't know. I don't really know how software work on the developer's side. I am just starting out making some contributions to the Open Source community and am publishing it hoping it'll motivate me to further develop it. 
 
