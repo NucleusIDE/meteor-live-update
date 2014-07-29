@@ -174,10 +174,10 @@ LiveUpdateCache = {
 };
 
 
-
+var should_reload = false;
 // stopping reloads on file changes and calling refreshPage after initial app is loaded,
 // i.e after the user has loaded the app, and has changed the file
-Reload._onMigrate("LiveUpdate", function() {
+Reload._onMigrate("LiveUpdate", function(retry) {
     // triggering this reactive computation inside Reload._onMigrate so it won't get triggered on initial page load or when user refreshes the page.
     // This let user to see un-touched (by LiveUpdate) version of her app if she refreshes the app manually
     Deps.autorun(function() {
@@ -188,12 +188,24 @@ Reload._onMigrate("LiveUpdate", function() {
         Autoupdate.newClientAvailable();
         $.get(Meteor.absoluteUrl()).success(function(html) {
             //if css file is changed, update css only, otherwise re-eval all js and re-render pageb
-            if (!LiveUpdate.updateCss(html) && !LiveUpdate.config.cssOnly) {
-                console.log("UPDATE JS?", LiveUpdate.config.ccsOnly);
+            var isNewCssFile = LiveUpdate.updateCss(html);
+            if (!isNewCssFile && !LiveUpdate.config.cssOnly) {
+                should_reload = false;
                 LiveUpdate.refreshPage(html);
+            }
+            //should reload the page but keep session variables
+            if (!isNewCssFile && LiveUpdate.config.cssOnly) {
+                console.log("SHOULD RELOAD");
+                should_reload = true;
+                retry();
             }
         });
     });
 
+    if (should_reload === true) {
+        console.log("RELOADING THE PAGE");
+        should_reload = false;
+        return [true];
+    }
     return [false];
 });
