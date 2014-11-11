@@ -1,11 +1,13 @@
-LiveUpdate = {
-    config: {
+LiveUpdateFactory = function() {
+    this.config = {
         cssOnly: false
-    },
-    configure: function(options) {
-        _.extend(LiveUpdate.config, options);
-    },
-    updateCss: function(html) {
+    };
+
+    this.configure = function(options) {
+        _.extend(this.config, options);
+    };
+
+    this.updateCss = function(html) {
         var cssSrcRegex = /^(?:[\s]*<link rel=\"stylesheet\")\shref=\"(.*)\"(?:>\s*)$/m;
         var cssSrc = html.match(cssSrcRegex)[1];
         //i.e css file is not updated
@@ -19,8 +21,9 @@ LiveUpdate = {
         newlink.setAttribute("href", cssSrc);
         document.getElementsByTagName("head").item(0).replaceChild(newlink, oldlink);
         return true;
-    },
-    updateTemplateWithHTML: function(name, newHtml) {
+    };
+
+    this.updateTemplateWithHTML =  function(name, newHtml) {
         //This method isn't used anywhere either. I made it when I was trying to figure out how to compile templates manually, so I've kept it here for future reference
         delete Template[name];
         Template.__define__(name, eval(Spacebars.compile(
@@ -30,8 +33,9 @@ LiveUpdate = {
             }
         )));
         this._reRenderPage();
-    },
-    _reRenderPage: function() {
+    };
+
+    this._reRenderPage = function() {
         //this is clearly a hack (or so I suppose)
         var allDr = UI.DomRange.getComponents(document.body);
         _.each(allDr, function(dr) {
@@ -40,9 +44,11 @@ LiveUpdate = {
         if(UI.body.contentParts.length > 1) UI.body.contentParts.shift();
         UI.DomRange.insert(UI.render(UI.body).dom, document.body);
         console.log("PAGE RE-RENDERED");
-    },
-    refreshPage: function(html) {
+    };
+
+    this.refreshPage = function(html) {
         var url = Meteor.absoluteUrl(),
+            liveUpdate = this,
             codeToCommentOutInEval = [
                 //let's not recreate collections (meteor complains if we try to do so). We can comment it out
                 // since collection would already be created when user first loads the app
@@ -103,10 +109,56 @@ LiveUpdate = {
                     reval(js);
                     // }
                 }
-                LiveUpdate._reRenderPage();
+                liveUpdate._reRenderPage();
             });
         });
-    }
+    };
+
+    var should_reload = false;
+    this.interceptReload = function() {
+        // stopping reloads on file changes and calling refreshPage after initial app is loaded,
+        // i.e after the user has loaded the app, and has changed the file
+        Reload._onMigrate("LiveUpdate", function(retry) {
+            // triggering this reactive computation inside Reload._onMigrate so it won't get triggered on initial page load or when user refreshes the page.
+            // This let user to see un-touched (by LiveUpdate) version of her app if she refreshes the app manually
+            Deps.autorun(function() {
+                console.log(this.config);
+                if (this.config.purelyThirdParty) {
+                    console.log("IT's PURELY THIRD PARTY");
+                    should_reload = true;
+                    return;
+                }
+
+                // Meteor creates and uses a collection for client (and server too) versions. It's kept in a local variable in Autoupdate package
+                // but what we desire (notification on any file change) can be obtained by Autoupdate.newClientAvailable(). Autoupdate package itself does a
+                // reactive computation to make Reload package do its duty and stops that computation after executing it once. But we want to continue receiving notifications
+                // on file changes, so we are running our own reactive computation
+                Autoupdate.newClientAvailable();
+                $.get(Meteor.absoluteUrl()).success(function(html) {
+                    //if css file is changed, update css only, otherwise re-eval all js and re-render pageb
+                    var isNewCssFile = this.updateCss(html);
+                    if (!isNewCssFile && !this.config.cssOnly) {
+                        should_reload = false;
+                        this.refreshPage(html);
+                    }
+                    //should reload the page but keep session variables
+                    if (!isNewCssFile && this.config.cssOnly) {
+                        console.log("SHOULD RELOAD");
+                        should_reload = true;
+                        retry();
+                    }
+                }.bind(this));
+            }.bind(this));
+
+            if (should_reload === true) {
+                should_reload = false;
+                return [true];
+            }
+            return [false];
+        }.bind(this));
+    };
+
+    return this;
 };
 
 
@@ -174,38 +226,6 @@ LiveUpdateCache = {
 };
 
 
-var should_reload = false;
-// stopping reloads on file changes and calling refreshPage after initial app is loaded,
-// i.e after the user has loaded the app, and has changed the file
-Reload._onMigrate("LiveUpdate", function(retry) {
-    // triggering this reactive computation inside Reload._onMigrate so it won't get triggered on initial page load or when user refreshes the page.
-    // This let user to see un-touched (by LiveUpdate) version of her app if she refreshes the app manually
-    Deps.autorun(function() {
-        // Meteor creates and uses a collection for client (and server too) versions. It's kept in a local variable in Autoupdate package
-        // but what we desire (notification on any file change) can be obtained by Autoupdate.newClientAvailable(). Autoupdate package itself does a
-        // reactive computation to make Reload package do its duty and stops that computation after executing it once. But we want to continue receiving notifications
-        // on file changes, so we are running our own reactive computation
-        Autoupdate.newClientAvailable();
-        $.get(Meteor.absoluteUrl()).success(function(html) {
-            //if css file is changed, update css only, otherwise re-eval all js and re-render pageb
-            var isNewCssFile = LiveUpdate.updateCss(html);
-            if (!isNewCssFile && !LiveUpdate.config.cssOnly) {
-                should_reload = false;
-                LiveUpdate.refreshPage(html);
-            }
-            //should reload the page but keep session variables
-            if (!isNewCssFile && LiveUpdate.config.cssOnly) {
-                console.log("SHOULD RELOAD");
-                should_reload = true;
-                retry();
-            }
-        });
-    });
+LiveUpdate = new LiveUpdateFactory();
 
-    if (should_reload === true) {
-        console.log("RELOADING THE PAGE");
-        should_reload = false;
-        return [true];
-    }
-    return [false];
-});
+LiveUpdate.interceptReload();
