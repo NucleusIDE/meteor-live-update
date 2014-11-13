@@ -5,15 +5,8 @@ LiveUpdateFactory = function() {
     _.extend(this.config, options);
   };
 
-  this.updateCss = function(html) {
-    /**
-     * We no longer need to live update css since meteor do it for us now
-     */
-    return true;
-  };
-
   this.updateTemplateWithHTML =  function(name, newHtml) {
-    //This method isn't used anywhere either. I made it when I was trying to figure out how to compile templates manually, so I've kept it here for future reference
+    //This method isn't used anywhere. I made it when I was trying to figure out how to compile templates manually, so I've kept it here for future reference
     delete Template[name];
     Template.__define__(name, eval(Spacebars.compile(
       newHtml, {
@@ -26,6 +19,7 @@ LiveUpdateFactory = function() {
 
   this._reRenderPage = function() {
     //this is clearly a hack (or so I suppose)
+    //this function is breaking with new meteor changes
     var allDr = UI.DomRange.getComponents(document.body);
     _.each(allDr, function(dr) {
       dr.removeAll();
@@ -46,7 +40,7 @@ LiveUpdateFactory = function() {
 
 
     // let's ignore package files and only re-eval user created js/templates
-    var jsToFetch = LiveUpdateParser.getAllScriptSrc(html).filter(function(src){return src.indexOf("package") < 0;});
+    var jsToFetch = LiveUpdateParser.getAllScriptSrc(html).filter(function(src){return ! /\/packages\//.test(src);});
     _.each(jsToFetch, function(jsFile) {
       var req = $.get(jsFile);
       req.always(function(res) {
@@ -55,6 +49,7 @@ LiveUpdateFactory = function() {
         //Sometime response object has the required js in res.responseText (in case of compiled template files)
         // and on other times, it's returned as expected response. Below statement handles that
         var js = typeof res === 'string' ? res : res.responseText;
+
         var templateRegex = /^(Template.__define__\()[\w\W]+(\}\)\);)$/gm;
 
         //Let's find out if the js is compiled template file. If it is, we take out individual templates
@@ -80,7 +75,7 @@ LiveUpdateFactory = function() {
             delete Template[templateName];
             //why this? It used to skip evals sometime when eval was used directly
             var reval = eval;
-            // console.log(snippet);
+            console.log(snippet);
             reval(snippet);
             // }
           });
@@ -129,7 +124,6 @@ LiveUpdateFactory = function() {
         Autoupdate.newClientAvailable();
 
         $.get(Meteor.absoluteUrl()).success(function(html) {
-          console.log("HTML: ", html);
           if (self.config.disable) {
             console.log("SHOULD RELOAD");
             should_reload = true;
@@ -162,33 +156,6 @@ LiveUpdateParser = {
       var srcRegex = /src=\"([\/\w\.\?\-]*)\"/;
       return script.match(srcRegex)[1];
     }));
-  },
-  parseCss: function (css) {
-    //this method is not used anywhere. I've kept it here in case we need to manually parse css and update it that way in future.
-    // It's not complete anyway.
-    // This is faster than present $("link").attr("href", "newCSSFile") approach, but I wonder how it'll perform with larger CSS files.
-    // Besides addRule is webkit only (?), so maybe we'll need another abstraction for achieving same behavior on other browsers too (at least on Firefox)
-    var clean= function (css) {
-      return css
-        .replace(/\/\*[\W\w]*?\*\//g, "") // remove comments
-        .replace(/^\s+|\s+$/g, "") // remove trailing spaces
-        .replace(/\s*([:;{}])\s*/g, "$1") // remove trailing separator spaces
-        .replace(/\};+/g, "}") // remove unnecessary separators
-        .replace(/([^:;{}])}/g, "$1;}"); // add trailing separators
-    };
-
-    var parse = function(css) {
-      // this method should return an object like {selector1: cssText1, selector2: cssText2}
-      // which we can iterate over and feed document.stylesheets[0].addRule(selector, cssText).
-      return css;
-    };
-
-    var process = function(parsedCss) {
-      // this method should recieve parsed css from parse method and update css in the document with addRule or whatever cross-browser abstraction we can come up with
-      return;
-    };
-
-
   }
 };
 
