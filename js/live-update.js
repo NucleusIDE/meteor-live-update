@@ -21,6 +21,8 @@ LiveUpdateFactory = function() {
     //this is clearly a hack (or so I suppose)
     //this function is breaking with new meteor changes
     var allDr = UI.DomRange.getComponents(document.body);
+    // following works in new blaze templates
+    //    UI.body.__contentParts[0]._domrange.members[0].remove()
     _.each(allDr, function(dr) {
       dr.removeAll();
     });
@@ -29,7 +31,19 @@ LiveUpdateFactory = function() {
     console.log("PAGE RE-RENDERED");
   };
 
+  this.reactifyTemplate = function(templateName) {
+    Template[templateName].renderFuncVar = new ReactiveVar(Template[templateName].renderFunction);
+    Template[templateName].renderFunction = function() {
+      var template = Template[templateName];
+      var func = template.renderFuncVar.get();
+      return func.cal();
+    };
+  };
+
+  this.templateNames = [];
+
   this.refreshPage = function(html) {
+    console.log("REFERSHING THE PAGEb");
     var url = Meteor.absoluteUrl(),
         self = this,
         codeToCommentOutInEval = [
@@ -41,7 +55,7 @@ LiveUpdateFactory = function() {
 
     // let's ignore package files and only re-eval user created js/templates
     var jsToFetch = LiveUpdateParser.getAllScriptSrc(html).filter(function(src){return ! /\/packages\//.test(src);});
-    _.each(jsToFetch, function(jsFile) {
+    _.each(jsToFetch, function(jsFile, index) {
       var req = $.get(jsFile);
       req.always(function(res) {
         //It's strange, the responseText exists on error response not on the success response for compile Template files.
@@ -50,50 +64,37 @@ LiveUpdateFactory = function() {
         // and on other times, it's returned as expected response. Below statement handles that
         var js = typeof res === 'string' ? res : res.responseText;
 
-        var templateRegex = /^(Template.__define__\()[\w\W]+(\}\)\);)$/gm;
+        var getNamesFromCompiledTemplate = function(snippet) {
+          var templateNameRegex = /Template\[\"([a-zA-Z_\-]*)\"\]/gm,
+              names = [];
+          var match = templateNameRegex.exec(snippet);
+          while(match !== null) {
+            names.push(match[1]);
+            match = templateNameRegex.exec(snippet);
+          }
+          return names;
+        };
 
-        //Let's find out if the js is compiled template file. If it is, we take out individual templates
-        // and render them individually neglecting extra code added by meteor in the template, otherwise we eval the whole js.
-        // I assume it is safe since it is already wrapped as a module by meteor
-        var templateSnippets = js.match(templateRegex) ? js.match(templateRegex)[0].split("\n\n") : false;
-        if (templateSnippets) {
-          _.each(templateSnippets, function(snippet) {
-
-            var templateName = snippet.match(/^Template.__define__\("(\w+)/)[1];
-
-            //can't use cache with templates. We need to delete the template and re-create when evaling template events file
-            //because otherwise it will have multiple events defined for the event. This will be possible once we figure out how to
-            //unbind events on meteor templates
-            // if (LiveUpdateCache.invalidTemplate(templateName, snippet)) {
-            // console.log(templateName, "IS CHANGED");
-            //cache template
-            // LiveUpdateCache.cacheTemplate(templateName, snippet);
-
-
-            //we need to first delete the already present Template.templateName object because
-            // Template.__define__ won't let us re-create if one is already present
-            delete Template[templateName];
-            //why this? It used to skip evals sometime when eval was used directly
-            var reval = eval;
-            console.log(snippet);
-            reval(snippet);
-            // }
+        _.each(codeToCommentOutInEval, function(rejex) {
+          js = js.replace(rejex, function(match) {
+            console.log("COMMENTING OUT", match);
+            return "//"+ match;
           });
-        } else {
-          _.each(codeToCommentOutInEval, function(rejex) {
-            js = js.replace(rejex, function(match) {
-              return "//"+ match;
-            });
+        });
+
+        var reval = eval;
+        self.templateNames.push(getNamesFromCompiledTemplate(js));
+        self.templateNames = _.flatten(_.uniq(self.templateNames));
+
+        if(index === jsToFetch.length-1) {
+          _.each(self.templateNames, function(tn) {
+            self.reactifyTemplate(tn);
           });
-          var reval = eval;
-          //can't use cache all the time. We need to re-eval the helpers/events on a template whenever it is re-rendered
-          // if(LiveUpdateCache.invalidScript(jsFile, js)) {
-          // console.log(jsFile, "IS CHANGED");
-          // LiveUpdateCache.cacheScript(jsFile, js);
-          reval(js);
-          // }
+
+          // self._reRenderPage();
         }
-        self._reRenderPage();
+
+        reval(js);
       });
     });
   };
@@ -105,23 +106,20 @@ LiveUpdateFactory = function() {
     var self = this;
 
     Reload._onMigrate("LiveUpdate", function(retry) {
-      console.log("INSIDE ON MIGRATE");
-
       // triggering self reactive computation inside Reload._onMigrate so it won't get triggered on initial page load or when user refreshes the page.
       // Self let user to see un-touched (by LiveUpdate) version of her app if she refreshes the app manually
       Deps.autorun(function() {
-        console.log(self.config);
-        if (self.config.purelyThirdParty) {
-          console.log("IT's PURELY THIRD PARTY");
-          should_reload = true;
-          return;
-        }
-
         // Meteor creates and uses a collection for client (and server too) versions. It's kept in a local variable in Autoupdate package
         // but what we desire (notification on any file change) can be obtained by Autoupdate.newClientAvailable(). Autoupdate package itself does a
         // reactive computation to make Reload package do its duty and stops that computation after executing it once. But we want to continue receiving notifications
         // on file changes, so we are running our own reactive computation
         Autoupdate.newClientAvailable();
+
+        if (self.config.purelyThirdParty) {
+          console.log("IT's PURELY THIRD PARTY");
+          should_reload = true;
+          return;
+        }
 
         $.get(Meteor.absoluteUrl()).success(function(html) {
           if (self.config.disable) {
