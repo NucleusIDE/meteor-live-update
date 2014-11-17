@@ -32,13 +32,17 @@ LiveUpdateFactory = function() {
   };
 
   this.reactifyTemplate = function(templateName) {
+    //this method was suggested by Devid Greenspan. Doesn't work as he suggested though
+    //https://groups.google.com/forum/#!topic/meteor-talk/veN_a1RNpXw
     Template[templateName].renderFuncVar = new ReactiveVar(Template[templateName].renderFunction);
     Template[templateName].renderFunction = function() {
+      console.log("TEMPLATE RENDER FUNCTION CALLED", templateName);
       var template = Template[templateName];
       var func = template.renderFuncVar.get();
-      return func.cal();
+      return func.call();
     };
   };
+
 
   this.templateNames = [];
 
