@@ -53,6 +53,7 @@ LiveUpdateFactory = function() {
         codeToCommentOutInEval = [
           //let's not recreate collections (meteor complains if we try to do so). We can comment it out
           // since collection would already be created when user first loads the app
+            /\w*\s*=\s*new Mongo.Collection\([\'\"](\w|\.)*/g,
             /\w*\s*=\s*new Meteor.Collection\([\'\"](\w|\.)*/g
         ];
 
@@ -86,7 +87,12 @@ LiveUpdateFactory = function() {
           });
         });
 
-        var reval = eval;
+        var reval = function(script) {
+          var res = eval(script);
+          console.log("EVALUATION RESULT", res);
+        };
+
+
         self.templateNames.push(getNamesFromCompiledTemplate(js));
         self.templateNames = _.flatten(_.uniq(self.templateNames));
 
