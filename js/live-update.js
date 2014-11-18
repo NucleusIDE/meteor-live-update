@@ -6,17 +6,68 @@ LiveUpdateFactory = function() {
   };
 
   this._reRenderPage = function() {
-    //this is clearly a hack (or so I suppose)
-    //this function is breaking with new meteor changes
-    var allDr = UI.DomRange.getComponents(document.body);
-    // following works in new blaze templates
-    //    UI.body.__contentParts[0]._domrange.members[0].remove()
-    _.each(allDr, function(dr) {
-      dr.removeAll();
-    });
-    if(UI.body.contentParts.length > 1) UI.body.contentParts.shift();
-    UI.DomRange.insert(UI.render(UI.body).dom, document.body);
-    console.log("PAGE RE-RENDERED");
+    /**
+     * Here you'll see all the dirty 'hack-of-the-year's
+     * What we are doing is like this:
+     * * Remove all the existing body's DOM
+     * * Delete the `Template.body` because otherwise meteor won't let us render the body again
+     * * Since we have deleted the body, we need to reconstruct it. This method has code copied from meteor's templating package
+     * * Refresh the body as meteor does on client startup
+     */
+
+    function detachBody () {
+      Template.body.view._domrange.detach(); //detach the dom of body template from page
+      Template.body.view._domrange.destroy(); //I don't think this is needed, I just like the sound of it
+    }
+
+    function resetBody () {
+      delete Template.body;
+
+      //this is the biggest hack here. There are obviously better ways to do this.
+      //I got scared when James said "it might not be possible to do this", so I went the full blown dirty-hacker way
+      //Code in this function comes mostly from `meteor/packages/templating/templating.js` file where they set the body for first time
+      Template.body = new Template('body', function () {
+        var parts = Template.body.contentViews;
+        // enable lookup by setting `view.template`
+        for (var i = 0; i < parts.length; i++)
+          parts[i].template = Template.body;
+        return parts;
+      });
+      Template.body.contentViews = []; // array of Blaze.Views
+      Template.body.view = null;
+
+      Template.body.addContent = function (renderFunc) {
+        var kind = 'body_content_' + Template.body.contentViews.length;
+
+        Template.body.contentViews.push(Blaze.View(kind, renderFunc));
+      };
+
+      // This function does not use `this` and so it may be called
+      // as `Meteor.startup(Template.body.renderIntoDocument)`.
+      Template.body.renderToDocument = function () {
+        // Only do it once.
+        if (Template.body.view)
+          return;
+
+        var view = Blaze.render(Template.body, document.body);
+        Template.body.view = view;
+      };
+    }
+
+    function refreshBody () {
+      //TODO: Remove this hard-coded bullshit and get all this content from the page we get via AJAX
+      Template.body.addContent((function() {
+        var view = this;
+        return HTML.DIV({
+          "class": "outer"
+        }, HTML.Raw('\n    <div class="pogo"></div>\n    <h1 class="title">Seederboard</h1>\n    <div class="subtitle">select a scientist to give them points</div>\n    '), Spacebars.include(view.lookupTemplate("leaderboard")), "\n  ");
+      }));
+      Template.body.renderToDocument();
+    }
+
+    detachBody();
+    resetBody();
+    refreshBody();
   };
 
   this.reactifyTemplate = function reactifyTemplate(templateName) {
@@ -41,7 +92,7 @@ LiveUpdateFactory = function() {
 
 
   this.refreshPage = function(html) {
-    console.log("REFERSHING THE PAGEb");
+    console.log("REFERSHING THE PAGE");
     var url = Meteor.absoluteUrl(),
         self = this,
         codeToCommentOutInEval = [
@@ -76,14 +127,13 @@ LiveUpdateFactory = function() {
 
         _.each(codeToCommentOutInEval, function(rejex) {
           js = js.replace(rejex, function(match) {
-            console.log("COMMENTING OUT", match);
             return "//"+ match;
           });
         });
 
         var reval = function(script) {
-          var res = eval(script);
-          console.log("EVAL", js);
+          var _eval = eval;
+          var res = _eval(script);
         };
 
         _.each(getNamesFromCompiledTemplate(js), function(tn) {
@@ -93,10 +143,10 @@ LiveUpdateFactory = function() {
 
         reval(js);
 
-        _.each(getNamesFromCompiledTemplate(js), function(tn) {
-          self.reactifyTemplate(tn);
-        });
-
+        if (index === jsToFetch.length-1) {
+          //execute if this file was the last one to eval
+          self._reRenderPage();
+        }
       });
     });
   };
