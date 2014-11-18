@@ -5,18 +5,6 @@ LiveUpdateFactory = function() {
     _.extend(this.config, options);
   };
 
-  this.updateTemplateWithHTML =  function(name, newHtml) {
-    //This method isn't used anywhere. I made it when I was trying to figure out how to compile templates manually, so I've kept it here for future reference
-    delete Template[name];
-    Template.__define__(name, eval(Spacebars.compile(
-      newHtml, {
-        isTemplate: true,
-        sourceName: 'Template "' + name + '"'
-      }
-    )));
-    this._reRenderPage();
-  };
-
   this._reRenderPage = function() {
     //this is clearly a hack (or so I suppose)
     //this function is breaking with new meteor changes
@@ -51,8 +39,6 @@ LiveUpdateFactory = function() {
     };
   };
 
-
-  this.templateNames = [];
 
   this.refreshPage = function(html) {
     console.log("REFERSHING THE PAGEb");
@@ -97,21 +83,8 @@ LiveUpdateFactory = function() {
 
         var reval = function(script) {
           var res = eval(script);
-          console.log("EVALUATION RESULT", res);
+          console.log("EVAL", js);
         };
-
-
-        // self.templateNames.push(getNamesFromCompiledTemplate(js));
-        // self.templateNames = _.flatten(_.uniq(self.templateNames));
-
-        // if(index === jsToFetch.length-1) {
-        //   _.each(self.templateNames, function(tn) {
-        //     console.log("Deleting", tn);
-        //     self.reactifyTemplate(tn);
-        //   });
-
-        //   // self._reRenderPage();
-        // }
 
         _.each(getNamesFromCompiledTemplate(js), function(tn) {
           //we need to delete the templates otherwise meteor complains that there are more than one templates of same name
