@@ -31,15 +31,23 @@ LiveUpdateFactory = function() {
     console.log("PAGE RE-RENDERED");
   };
 
-  this.reactifyTemplate = function(templateName) {
+  this.reactifyTemplate = function reactifyTemplate(templateName) {
     //this method was suggested by Devid Greenspan. Doesn't work as he suggested though
     //https://groups.google.com/forum/#!topic/meteor-talk/veN_a1RNpXw
     Template[templateName].renderFuncVar = new ReactiveVar(Template[templateName].renderFunction);
+    var template = Template[templateName];
+    var func = template.renderFuncVar.get();
+
     Template[templateName].renderFunction = function() {
       console.log("TEMPLATE RENDER FUNCTION CALLED", templateName);
-      var template = Template[templateName];
-      var func = template.renderFuncVar.get();
-      return func.call();
+      var args = new Array(arguments.length);
+      var ctx = this;
+
+      for(var i = 0; i < args.length; ++i) {
+        args[i] = arguments[i];
+      }
+
+      return func.apply(ctx, args);
     };
   };
 
@@ -93,18 +101,29 @@ LiveUpdateFactory = function() {
         };
 
 
-        self.templateNames.push(getNamesFromCompiledTemplate(js));
-        self.templateNames = _.flatten(_.uniq(self.templateNames));
+        // self.templateNames.push(getNamesFromCompiledTemplate(js));
+        // self.templateNames = _.flatten(_.uniq(self.templateNames));
 
-        if(index === jsToFetch.length-1) {
-          _.each(self.templateNames, function(tn) {
-            self.reactifyTemplate(tn);
-          });
+        // if(index === jsToFetch.length-1) {
+        //   _.each(self.templateNames, function(tn) {
+        //     console.log("Deleting", tn);
+        //     self.reactifyTemplate(tn);
+        //   });
 
-          // self._reRenderPage();
-        }
+        //   // self._reRenderPage();
+        // }
+
+        _.each(getNamesFromCompiledTemplate(js), function(tn) {
+          //we need to delete the templates otherwise meteor complains that there are more than one templates of same name
+          delete Template[tn];
+        });
 
         reval(js);
+
+        _.each(getNamesFromCompiledTemplate(js), function(tn) {
+          self.reactifyTemplate(tn);
+        });
+
       });
     });
   };
