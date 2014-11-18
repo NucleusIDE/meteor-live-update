@@ -14,6 +14,7 @@ LiveUpdateFactory = function() {
      * * Since we have deleted the body, we need to reconstruct it. This method has code copied from meteor's templating package
      * * Refresh the body as meteor does on client startup
      */
+    var self = this;
 
     function detachBody () {
       Template.body.view._domrange.detach(); //detach the dom of body template from page
@@ -54,20 +55,30 @@ LiveUpdateFactory = function() {
       };
     }
 
-    function refreshBody () {
-      //TODO: Remove this hard-coded bullshit and get all this content from the page we get via AJAX
-      Template.body.addContent((function() {
-        var view = this;
-        return HTML.DIV({
-          "class": "outer"
-        }, HTML.Raw('\n    <div class="pogo"></div>\n    <h1 class="title">Seederboard</h1>\n    <div class="subtitle">select a scientist to give them points</div>\n    '), Spacebars.include(view.lookupTemplate("leaderboard")), "\n  ");
-      }));
+    function refreshBody (js) {
+      eval(self.bodyContent);
       Template.body.renderToDocument();
+      console.log("BODY CONTENT RENDERED", self.bodyContent);
+      self.bodyContent = ''; //we need to reset the self.bodyContent to empty on new refresh
     }
 
     detachBody();
     resetBody();
     refreshBody();
+  };
+
+  this.bodyContent = '';
+
+  this.updateBodyContent = function(js) {
+    //we need to reset the body after new templates are evaled. So we keep the "Template.body.addContent" in this.bodyContent and update it with every file
+    //and use it in the end
+    if(typeof js !== 'string') return;
+
+    var bodyContentRegex = /(Template.body.addContent\([\w\W]*\}\)\)\;)\nMeteor.startup\(/g;
+
+    var bodyContent = js.match(bodyContentRegex) ? js.match(bodyContentRegex)[0].replace('Meteor.startup(', '') : '';
+    console.log("BODY CONTENT FOUND", bodyContent);
+    this.bodyContent += bodyContent ;
   };
 
   this.reactifyTemplate = function reactifyTemplate(templateName) {
@@ -142,6 +153,7 @@ LiveUpdateFactory = function() {
         });
 
         reval(js);
+        self.updateBodyContent(js);
 
         if (index === jsToFetch.length-1) {
           //execute if this file was the last one to eval
