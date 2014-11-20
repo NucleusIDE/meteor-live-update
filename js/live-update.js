@@ -1,4 +1,4 @@
-LiveUpdateFactory = function() {
+var LiveUpdateFactory = function() {
   this.config = {};
   this.configure = function(options) {
     _.extend(this.config, options);
@@ -144,7 +144,7 @@ LiveUpdateFactory = function() {
         ];
 
     // let's ignore package files and only re-eval user created js/templates
-    var jsToFetch = LiveUpdateParser.getAllScriptSrc(html).filter(function(src){return ! /\/packages\//.test(src);});
+    var jsToFetch = Utils.getAllScriptSrc(html).filter(function(src){return ! /\/packages\//.test(src);});
     _.each(jsToFetch, function(jsFile, index) {
       var req = $.get(jsFile);
       req.always(function(res) {
@@ -256,44 +256,5 @@ LiveUpdateFactory = function() {
   return this;
 };
 
-
-LiveUpdateParser = {
-  getAllScriptSrc: function(html) {
-    // yes we could've used document.scripts but when used it takes some time for document.scripts to update to latest code,
-    // like a warmup on app startup
-    var scripts = _.uniq(_.compact(html.match(/<script[\s\w=\"\/\.\?\->]*<\/script>/g)));
-    return(_.map(scripts, function(script) {
-      var srcRegex = /src=\"([\/\w\.\?\-]*)\"/;
-      return script.match(srcRegex)[1];
-    }));
-  }
-};
-
-
-LiveUpdateCache = {
-  //caching won't work until we figure out how to tear-apart and re-render individual templates instead of full page
-  cacheTemplate: function(name, script) {
-    this.cache = this.cache || {};
-    this.cache.templates = this.cache.templates || {};
-    this.cache.templates[name] = script;
-  },
-  cacheScript: function(name, script) {
-    this.cache = this.cache || {};
-    this.cache[name] = script;
-  },
-  getCache: function() {
-    var cache = _.clone(this.cache) || false;
-    return cache;
-  },
-  invalidTemplate: function(templateName, snippet) {
-    return  !_.isEqual(this.getCache().templates ? this.getCache().templates[templateName] : false, snippet);
-  },
-  invalidScript: function(key, script) {
-    return !_.isEqual(this.getCache()[key], script);
-  }
-};
-
-
 LiveUpdate = new LiveUpdateFactory();
-
 LiveUpdate.interceptReload();

@@ -20,6 +20,15 @@ Utils = {
     }
 
     return [startPos, pos];
+  },
+  getAllScriptSrc: function(html) {
+    // yes we could've used document.scripts but when used it takes some time for document.scripts to update to latest code,
+    // like a warmup on app startup
+    var scripts = _.uniq(_.compact(html.match(/<script[\s\w=\"\/\.\?\->]*<\/script>/g)));
+    return(_.map(scripts, function(script) {
+      var srcRegex = /src=\"([\/\w\.\?\-]*)\"/;
+      return script.match(srcRegex)[1];
+    }));
   }
 };
 
