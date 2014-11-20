@@ -1,6 +1,5 @@
 LiveUpdateFactory = function() {
   this.config = {};
-
   this.configure = function(options) {
     _.extend(this.config, options);
   };
@@ -127,14 +126,22 @@ LiveUpdateFactory = function() {
     var url = Meteor.absoluteUrl(),
         self = this,
         codeToCommentOutInEval = [
+          /**
+           * should contain a rejex matching string to comment out, or a function return string to comment out
+           */
           //let's not recreate collections (meteor complains if we try to do so). We can comment it out
           // since collection would already be created when user first loads the app
-            /\w*\s*=\s*new Mongo.Collection\([\'\"](\w|\.)*/g,
-            /\w*\s*=\s*new Meteor.Collection\([\'\"](\w|\.)*/g,
+            /[\w\s]*=[\s]*new (Mongo|Meteor).Collection\([\W\w\.\);]*?\n/gm,
           //when meteor methods are defined client side, meteor complains when we eval these. So let's comment them out too
-            /Meteor.methods\({[\S\s]*?}[\n\S*]?}\);/gm
-        ];
+          function(str) {
+            var start = str.indexOf('Meteor.methods({');
+            if(start < 0) return false;
 
+            var matchPos = Utils.getContainingSubStr(str,'(', ')', start);
+
+            return str.substring(start, matchPos[1]);
+          }
+        ];
 
     // let's ignore package files and only re-eval user created js/templates
     var jsToFetch = LiveUpdateParser.getAllScriptSrc(html).filter(function(src){return ! /\/packages\//.test(src);});
@@ -158,15 +165,34 @@ LiveUpdateFactory = function() {
           return names;
         };
 
-        _.each(codeToCommentOutInEval, function(rejex) {
-          js = js.replace(rejex, function(match) {
-            return "/*"+ match + "*/";
-          });
+        _.each(codeToCommentOutInEval, function(codeToComment) {
+          if(typeof codeToComment === 'function') {
+            var str = codeToComment(js);
+            if(str)
+              js = js.replace(str, '/*'+ str + '*/');
+          } else
+            js = js.replace(codeToComment, function(match) {
+              res = "/*"+ match + "*/";
+              try {
+                //in case of local collections defined in helpers, we need to redefine them when templates are reconstructed
+                //so try to eval the match or comment it otherwise
+                eval(match);
+                res = match;
+              } catch(e) {}
+              return res;
+            });
         });
 
         var reval = function(script) {
           var _eval = eval;
-          var res = _eval(script);
+          try {
+            var res = _eval(script);
+          } catch(error ) {
+            console.log("couldn't eval", script);
+            if(script.indexOf('Meteor.methods') > 0)
+              window.eess = script;
+            console.log(error);
+          }
         };
 
         _.each(getNamesFromCompiledTemplate(js), function(tn) {
