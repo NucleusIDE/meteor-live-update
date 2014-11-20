@@ -15,7 +15,8 @@ Package.on_use(function (api, where) {
            'deps']);
 
   api.add_files([
-    'js/live-update.js'
+    'js/live-update.js',
+    'js/utils.js'
   ], ['client']);
 
   api.export && api.export(['LiveUpdate', 'ReactiveVar'],['client']);
