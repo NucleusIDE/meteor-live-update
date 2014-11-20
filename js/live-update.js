@@ -62,14 +62,14 @@ LiveUpdateFactory = function() {
     }
 
     function detachIronLayout() {
-      IronLayout.view._domrange.detach();
-      IronLayout.view._domrange.destroy();
+      Router._layout.destroy();
     }
 
     function refreshIronLayout() {
-      var layoutTemplate = Template[IronLayout.template()],
+      var layoutView = Router._layout.create(),
           parent = document.body;
-      Blaze.render(layoutTemplate, parent);
+
+      Blaze.render(layoutView, parent);
     }
 
 
@@ -78,9 +78,9 @@ LiveUpdateFactory = function() {
       detachBody();
       resetBody();
       refreshBody();
-    } else if(IronLayout) {
-      //There is no such var available by default. I've forked iron-dynamic-template and exported this global var on window
-      //IronLayout contains the BlazeView which is used as global Layout. I am not 100% sure
+    }
+
+    if(typeof Router !== 'undefined' && Router._layout) {
       detachIronLayout();
       refreshIronLayout();
     }
