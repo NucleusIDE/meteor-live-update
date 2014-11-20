@@ -12,8 +12,7 @@ Package.on_use(function (api, where) {
            'ui',
            'spacebars-compiler',
            'autoupdate',
-           'deps',
-           'reactive-var']);
+           'deps']);
 
   api.add_files([
     'js/live-update.js'
