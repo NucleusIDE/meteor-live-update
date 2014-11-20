@@ -58,13 +58,32 @@ LiveUpdateFactory = function() {
     function refreshBody (js) {
       eval(self.bodyContent);
       Template.body.renderToDocument();
-      console.log("BODY CONTENT RENDERED", self.bodyContent);
       self.bodyContent = ''; //we need to reset the self.bodyContent to empty on new refresh
     }
 
-    detachBody();
-    resetBody();
-    refreshBody();
+    function detachIronLayout() {
+      IronLayout.view._domrange.detach();
+      IronLayout.view._domrange.destroy();
+    }
+
+    function refreshIronLayout() {
+      var layoutTemplate = Template[IronLayout.template()],
+          parent = document.body;
+      Blaze.render(layoutTemplate, parent);
+    }
+
+
+    if(Template.body.view) {
+      //Template.body is null when using iron-router
+      detachBody();
+      resetBody();
+      refreshBody();
+    } else if(IronLayout) {
+      //There is no such var available by default. I've forked iron-dynamic-template and exported this global var on window
+      //IronLayout contains the BlazeView which is used as global Layout. I am not 100% sure
+      detachIronLayout();
+      refreshIronLayout();
+    }
   };
 
   this.bodyContent = '';
@@ -77,27 +96,28 @@ LiveUpdateFactory = function() {
     var bodyContentRegex = /(Template.body.addContent\([\w\W]*\}\)\)\;)\nMeteor.startup\(/g;
 
     var bodyContent = js.match(bodyContentRegex) ? js.match(bodyContentRegex)[0].replace('Meteor.startup(', '') : '';
-    console.log("BODY CONTENT FOUND", bodyContent);
     this.bodyContent += bodyContent ;
   };
 
   this.reactifyTemplate = function reactifyTemplate(templateName) {
     //this method was suggested by Devid Greenspan. Doesn't work as he suggested though
     //https://groups.google.com/forum/#!topic/meteor-talk/veN_a1RNpXw
-    Template[templateName].renderFuncVar = new ReactiveVar(Template[templateName].renderFunction);
+    Template[templateName].renderFuncVar = new ReactiveVar(Template[templateName].renderFunction());
     var template = Template[templateName];
     var func = template.renderFuncVar.get();
 
     Template[templateName].renderFunction = function() {
       console.log("TEMPLATE RENDER FUNCTION CALLED", templateName);
-      var args = new Array(arguments.length);
-      var ctx = this;
+      // var args = new Array(arguments.length);
+      // var ctx = this;
 
-      for(var i = 0; i < args.length; ++i) {
-        args[i] = arguments[i];
-      }
+      // for(var i = 0; i < args.length; ++i) {
+      //   args[i] = arguments[i];
+      // }
 
-      return func.apply(ctx, args);
+      // return func.apply(ctx, args);
+
+      return func;
     };
   };
 

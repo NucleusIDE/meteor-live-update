@@ -8,11 +8,16 @@ Package.describe({
 Package.on_use(function (api, where) {
   api.versionsFrom("METEOR@0.9.1");
 
-  api.use(['reload', 'ui', 'spacebars-compiler', 'autoupdate', 'deps']);
+  api.use(['reload',
+           'ui',
+           'spacebars-compiler',
+           'autoupdate',
+           'deps',
+           'reactive-var']);
 
   api.add_files([
     'js/live-update.js'
   ], ['client']);
 
-  api.export && api.export(['LiveUpdate', 'LiveUpdateParser', 'LiveUpdateCache'],['client']);
+  api.export && api.export(['LiveUpdate', 'ReactiveVar'],['client']);
 });
