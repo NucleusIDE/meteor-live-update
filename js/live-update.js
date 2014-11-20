@@ -1,8 +1,39 @@
 var LiveUpdateFactory = function() {
   this.config = {};
   var DEBUG = !!this.config.debug;
+
+  this._codeToCommentOutInEval = [
+    /**
+     * should contain a rejex matching string to comment out, or a function return string to comment out
+     */
+    //let's not recreate collections (meteor complains if we try to do so). We can comment it out
+    // since collection would already be created when user first loads the app
+      /[\w\s]*=[\s]*new (Mongo|Meteor).Collection\([\W\w\.\);]*?\n/gm,
+    //when meteor methods are defined client side, meteor complains when we eval these. So let's comment them out too
+    function(str) {
+      var start = str.indexOf('Meteor.methods({');
+      if(start < 0) return false;
+
+      var matchPos = Utils.getContainingSubStr(str,'(', ')', start);
+
+      return str.substring(start, matchPos[1]);
+    }
+  ];
+
   this.configure = function(options) {
     _.extend(this.config, options);
+  };
+
+  this.beforeUpdate = function beforeUpdate(options) {
+    if(_.isArray(options))
+      _.each(options, function(code) {
+        beforeUpdate(code);
+      });
+
+    if(! _.isRegExp(options) && ! _.isFunction(options))
+      throw new Error("Only function or regexp (or array of those) accepted");
+    else
+      this._codeToCommentOutInEval.push(options);
   };
 
   this._reRenderPage = function() {
@@ -121,28 +152,10 @@ var LiveUpdateFactory = function() {
     };
   };
 
-
   this.refreshPage = function(html) {
     console.log("LiveUpdate");
     var url = Meteor.absoluteUrl(),
-        self = this,
-        codeToCommentOutInEval = [
-          /**
-           * should contain a rejex matching string to comment out, or a function return string to comment out
-           */
-          //let's not recreate collections (meteor complains if we try to do so). We can comment it out
-          // since collection would already be created when user first loads the app
-            /[\w\s]*=[\s]*new (Mongo|Meteor).Collection\([\W\w\.\);]*?\n/gm,
-          //when meteor methods are defined client side, meteor complains when we eval these. So let's comment them out too
-          function(str) {
-            var start = str.indexOf('Meteor.methods({');
-            if(start < 0) return false;
-
-            var matchPos = Utils.getContainingSubStr(str,'(', ')', start);
-
-            return str.substring(start, matchPos[1]);
-          }
-        ];
+        self = this;
 
     // let's ignore package files and only re-eval user created js/templates
     var jsToFetch = Utils.getAllScriptSrc(html).filter(function(src){return ! /\/packages\//.test(src);});
@@ -166,7 +179,8 @@ var LiveUpdateFactory = function() {
           return names;
         };
 
-        _.each(codeToCommentOutInEval, function(codeToComment) {
+        // _.each(self._codeToCommentOutInEval, function(codeToComment) {
+        _.each(self._codeToCommentOutInEval, function(codeToComment) {
           if(typeof codeToComment === 'function') {
             var str = codeToComment(js);
             if(str)
