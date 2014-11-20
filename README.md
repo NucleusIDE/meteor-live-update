@@ -9,6 +9,10 @@ While developing an meteor app, it updates the templates, css (I removed this fu
 I don't know. I am not a pro meteor ninja (yet). I am somewhat good in JavaScript, similar with meteor, but my code is in no way perfect.  
 Please feel free to point out the mistakes and tell me the right way to do things. I love to learn and constructive criticism is welcome. It's really simple (and small) code, give it a read. Comments, suggestions, advice (technical and non-technical) are welcome.
 
+### Demo 
+Here's a video of editing `todos` example app with this package.
+[![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/Q9M2YLiF-Q4/0.jpg)](http://www.youtube.com/watch?v=Q9M2YLiF-Q4)
+
 ##How to install it?
 ```sh
 meteor add channikhabra:live-update
