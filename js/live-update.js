@@ -1,5 +1,6 @@
 var LiveUpdateFactory = function() {
   this.config = {};
+  var DEBUG = !!this.config.debug;
   this.configure = function(options) {
     _.extend(this.config, options);
   };
@@ -122,7 +123,7 @@ var LiveUpdateFactory = function() {
 
 
   this.refreshPage = function(html) {
-    console.log("REFERSHING THE PAGE");
+    console.log("LiveUpdate");
     var url = Meteor.absoluteUrl(),
         self = this,
         codeToCommentOutInEval = [
@@ -188,9 +189,8 @@ var LiveUpdateFactory = function() {
           try {
             var res = _eval(script);
           } catch(error ) {
-            console.log("couldn't eval", script);
-            if(script.indexOf('Meteor.methods') > 0)
-              window.eess = script;
+            if(DEBUG)
+              console.log("couldn't eval", script);
             console.log(error);
           }
         };
