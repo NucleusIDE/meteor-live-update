@@ -130,7 +130,9 @@ LiveUpdateFactory = function() {
           //let's not recreate collections (meteor complains if we try to do so). We can comment it out
           // since collection would already be created when user first loads the app
             /\w*\s*=\s*new Mongo.Collection\([\'\"](\w|\.)*/g,
-            /\w*\s*=\s*new Meteor.Collection\([\'\"](\w|\.)*/g
+            /\w*\s*=\s*new Meteor.Collection\([\'\"](\w|\.)*/g,
+          //when meteor methods are defined client side, meteor complains when we eval these. So let's comment them out too
+            /Meteor.methods\({[\S\s]*?}[\n\S*]?}\);/gm
         ];
 
 
@@ -158,7 +160,7 @@ LiveUpdateFactory = function() {
 
         _.each(codeToCommentOutInEval, function(rejex) {
           js = js.replace(rejex, function(match) {
-            return "//"+ match;
+            return "/*"+ match + "*/";
           });
         });
 
