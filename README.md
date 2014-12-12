@@ -64,9 +64,9 @@ Meteor supports this feature now, so I've removed it from this package.
 
 # Known Issues
 * Packages that use `Reload._onMigrate` might not work, because this package catches the call it receives and never let it go ahead (otherwise page will reload)
-* If you make changes to the name of your Collections, you need to refresh the page to get them to actually work
-  i.e if you change lines like this in your code
-  ```javascript
-  Iditos = new Mongo.Collection("idiots")
-  ```
-  then you'll need to refresh the page. Meteor doesn't allow creating same collection twice, because of which evaling this line cause eval on other code to fail as well. Because of this, we simply comment out these lines when updating js live (for now). Better solutions are of course possible.
+    * If you make changes to the name of your Collections, you need to refresh the page to get them to actually work
+      i.e if you change lines like this in your code
+      ```javascript
+      Iditos = new Mongo.Collection("idiots")
+      ```
+      then you'll need to refresh the page. Meteor doesn't allow creating same collection twice, because of which evaling this line cause eval on other code to fail as well. Because of this, we simply comment out these lines when updating js live (for now). Better solutions are of course possible.
