@@ -1,5 +1,7 @@
 var LiveUpdateFactory = function() {
   this.config = {};
+  this.base_url = document.location.host;
+
   var DEBUG = !!this.config.debug;
 
   this._codeToCommentOutInEval = [
@@ -154,7 +156,7 @@ var LiveUpdateFactory = function() {
 
   this.refreshPage = function(html) {
     console.log("LiveUpdate");
-    var url = Meteor.absoluteUrl(),
+    var url = this.base_url,
         self = this;
 
     // let's ignore package files and only re-eval user created js/templates
@@ -247,7 +249,7 @@ var LiveUpdateFactory = function() {
           return;
         }
 
-        $.get(Meteor.absoluteUrl()).success(function(html) {
+        $.get(this.base_url).success(function(html) {
           if (self.config.disable) {
             console.log("SHOULD RELOAD");
             should_reload = true;
