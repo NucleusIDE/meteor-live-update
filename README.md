@@ -15,7 +15,7 @@ Here's a video of editing `todos` example app with this package.
 
 ##How to install it?
 ```sh
-meteor add channikhabra:live-update
+meteor add nucleuside:live-update
 ```
 
 ##How to use it?
