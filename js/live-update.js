@@ -235,6 +235,24 @@ var LiveUpdateFactory = function() {
     });
   };
 
+  this.refreshFile = function (fileContent, filetype) {
+    if (filetype == 'html') {
+      this.refreshTemplate(fileContent);
+    } else if (filetype === 'js') {
+      this.safeEvalJs(fileContent);
+    } else {
+      console.log("LiveUpdate doesn't know how to treat a", filetype, "file");
+    }
+  };
+
+  this.refreshTemplate = function (rawHtml) {
+    console.log("Stub for rendering new template from HTML");
+  };
+
+  this.safeEvalJs = function (newJS) {
+    console.log("Stub for safely evaluating JS");
+  };
+
   var should_reload = false;
   this.interceptReload = function() {
     // stopping reloads on file changes and calling refreshPage after initial app is loaded,
