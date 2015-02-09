@@ -1,6 +1,14 @@
 var LiveUpdateFactory = function() {
   this.config = {};
   this.base_url = document.location.host;
+  this._using_as_lib = false;
+
+  this.use_as_lib = function (toggle) {
+    if(typeof toggle == 'undefined')
+      toggle = true;
+
+    this._using_as_lib = toggle;
+  };
 
   var DEBUG = !!this.config.debug;
 
@@ -237,6 +245,11 @@ var LiveUpdateFactory = function() {
       // triggering self reactive computation inside Reload._onMigrate so it won't get triggered on initial page load or when user refreshes the page.
       // Self let user to see un-touched (by LiveUpdate) version of her app if she refreshes the app manually
       Deps.autorun(function() {
+        // let's not intercept the reload if we are using LiveUpdate as a library, i.e doing the hot-loading manually
+        if(self._using_as_lib) {
+          return;
+        }
+
         // Meteor creates and uses a collection for client (and server too) versions. It's kept in a local variable in Autoupdate package
         // but what we desire (notification on any file change) can be obtained by Autoupdate.newClientAvailable(). Autoupdate package itself does a
         // reactive computation to make Reload package do its duty and stops that computation after executing it once. But we want to continue receiving notifications
