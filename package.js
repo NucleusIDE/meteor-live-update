@@ -9,6 +9,7 @@ Package.on_use(function (api, where) {
   api.versionsFrom("METEOR@0.9.1");
 
   api.use(['reload',
+           'jquery',
            'ui',
            'spacebars-compiler',
            'autoupdate',

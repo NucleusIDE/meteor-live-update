@@ -1,4 +1,6 @@
 var LiveUpdateFactory = function() {
+  var self = this;
+
   this.config = {};
   this.base_url = document.location.host;
   this._using_as_lib = false;
@@ -245,8 +247,39 @@ var LiveUpdateFactory = function() {
     }
   };
 
+  this._create_template_from_html = function (templateName, rawHtml) {
+    /**
+     * Create a template from html string
+     * ## Arguments
+     * * rawHtml        - Html as a string
+     * * template_name  - name of the template to be created with rawHtml as content
+     */
+    if(Template[templateName]) {
+      console.log("Deleting Template", templateName);
+      delete Template[templateName];
+    }
+
+    Template[templateName] = Template("Template." + templateName, eval(SpacebarsCompiler.compile(
+        rawHtml, {
+          isTemplate: true,
+          sourceName: 'Template "' + templateName + '"'
+        }
+    )));
+
+    return Template[templateName];
+  };
+
   this.refreshTemplate = function (rawHtml) {
-    console.log("Stub for rendering new template from HTML");
+    var allTemplates = jQuery.parseHTML(rawHtml);
+    jQuery.each(allTemplates, function (i, el) {
+      if (el.nodeName.toLowerCase() == 'template') {
+        var $el = jQuery(el);
+        var name = $el.attr('name');
+        var html = $el.html().replace(/\{\{\&gt\;/g, '{{>');   // the template inclusion tags appear as &gt; in obtained html so need to be taken care of
+
+        self._create_template_from_html(name, html);
+      }
+    });
   };
 
   this.safeEvalJs = function (newJS) {
