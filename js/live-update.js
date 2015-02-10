@@ -5,7 +5,7 @@ var LiveUpdateFactory = function () {
   this.base_url = document.location.host;
   this._using_as_lib = false;
 
-  this.use_as_lib = function (toggle) {
+  this.useAsLib = function (toggle) {
     if (typeof toggle == 'undefined')
       toggle = true;
 
