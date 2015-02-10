@@ -236,12 +236,23 @@ var LiveUpdateFactory = function () {
      * * template_name  - name of the template to be created with rawHtml as content
      */
 
-    var templateHelpers = false,
-        templateEvents = false;
+    var template = Template[templateName],
+        templateCarry = {};
 
-    if (Template[templateName]) {
-      templateHelpers = Template[templateName].__helpers;
-      templateEvents = Template[templateName].__eventMaps;
+    if (template) {
+      Object.keys(template).forEach(function (key) {
+        /**
+         * Since we are handling only the HTML templates in this function, it doesn't make sense to re-eval the Helpers
+         * and events for each template. So we keep the old template helpers and events when we update the template content.
+         * We copy all the properties on the Template other than renderFunction (which in turn forms the view of the Template.
+         * We can't simply update the 'renderFunction' property of the template because Blaze won't render the template
+         * if the Template['templateName'] exists
+         */
+        if (key == 'viewName' || key == 'renderFunction') {
+          return;
+        }
+        templateCarry[key] = template[key];
+      });
       delete Template[templateName];
     }
 
@@ -252,16 +263,9 @@ var LiveUpdateFactory = function () {
         }
     )));
 
-    if (templateHelpers) {
-      /**
-       * Since we are handling only the HTML templates in this function, it doesn't make sense to re-eval the Helpers
-       * and events for each template. So we keep the old template helpers and events when we update the template content.
-       */
-      Template[templateName].__helpers = templateHelpers
-    }
-    if (templateEvents) {
-      Template[templateName].__eventMaps = templateEvents;
-    }
+    Object.keys(templateCarry).forEach(function (key) {
+      Template[templateName][key] = templateCarry[key];
+    });
 
     return Template[templateName];
   };
@@ -282,8 +286,9 @@ var LiveUpdateFactory = function () {
     this._reRenderPage();
   };
 
-  this.safeEvalJs = function (newJS) {
-    console.log("Stub for safely evaluating JS");
+  this.safeEvalJs = function (newJs) {
+    var codeToEval = '(function(){' + newJs + '})()';
+    eval(codeToEval);
   };
 
   var should_reload = false;
