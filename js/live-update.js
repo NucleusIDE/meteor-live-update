@@ -233,15 +233,28 @@ var LiveUpdateFactory = function () {
      * Create a template from html string
      * ## Arguments
      * * rawHtml        - Html as a string
-     * * templateName   - name of the template to be created with rawHtml as content
+     * * template_name  - name of the template to be created with rawHtml as content
      */
 
-    Template[templateName].renderFunction = eval(SpacebarsCompiler.compile(
+    var templateRenderFunction = eval(SpacebarsCompiler.compile(
         rawHtml, {
           isTemplate: true,
           sourceName: 'Template "' + templateName + '"'
         }
     ));
+
+    if (Template[templateName]) {
+      /**
+       * If template already exists, we only update its renderFunction which in turns render its view, so we can keep
+       * Template.rendered, Template.created etc hooks
+       */
+      Template[templateName].renderFunction = templateRenderFunction;
+    } else {
+      /**
+       * If Template doesn't already exist, we create a new Template
+       */
+      Template[templateName] = Template("Template." + templateName, templateRenderFunction);
+    }
 
     return Template[templateName];
   };
