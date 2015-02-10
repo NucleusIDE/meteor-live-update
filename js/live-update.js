@@ -3,13 +3,13 @@ var LiveUpdateFactory = function () {
 
   this.config = {};
   this.base_url = document.location.host;
-  this._using_as_lib = false;
+  this._usingAsLib = false;
 
   this.useAsLib = function (toggle) {
     if (typeof toggle == 'undefined')
       toggle = true;
 
-    this._using_as_lib = toggle;
+    this._usingAsLib = toggle;
   };
 
   var DEBUG = !!this.config.debug;
@@ -228,7 +228,7 @@ var LiveUpdateFactory = function () {
     }
   };
 
-  this._create_template_from_html = function (templateName, rawHtml) {
+  this._createTemplateFromHtml = function (templateName, rawHtml) {
     /**
      * Create a template from html string
      * ## Arguments
@@ -268,7 +268,7 @@ var LiveUpdateFactory = function () {
         var name = $el.attr('name');
         var html = $el.html().replace(/\{\{\&gt\;/g, '{{>');   // the template inclusion tags appear as &gt; in obtained html so need to be taken care of
 
-        self._create_template_from_html(name, html);
+        self._createTemplateFromHtml(name, html);
       }
     });
 
@@ -276,8 +276,10 @@ var LiveUpdateFactory = function () {
   };
 
   this.safeEvalJs = function (newJs) {
-    var codeToEval = '(function(){' + newJs + '})()';
-    eval(codeToEval);
+    if (!newJs) {
+      return;
+    }
+    Eval(newJs);
   };
 
   var should_reload = false;
@@ -291,7 +293,7 @@ var LiveUpdateFactory = function () {
       // Self let user to see un-touched (by LiveUpdate) version of her app if she refreshes the app manually
       Deps.autorun(function () {
         // let's not intercept the reload if we are using LiveUpdate as a library, i.e doing the hot-loading manually
-        if (self._using_as_lib) {
+        if (self._usingAsLib) {
           return;
         }
 
