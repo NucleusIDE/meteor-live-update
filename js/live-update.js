@@ -233,39 +233,15 @@ var LiveUpdateFactory = function () {
      * Create a template from html string
      * ## Arguments
      * * rawHtml        - Html as a string
-     * * template_name  - name of the template to be created with rawHtml as content
+     * * templateName   - name of the template to be created with rawHtml as content
      */
 
-    var template = Template[templateName],
-        templateCarry = {};
-
-    if (template) {
-      Object.keys(template).forEach(function (key) {
-        /**
-         * Since we are handling only the HTML templates in this function, it doesn't make sense to re-eval the Helpers
-         * and events for each template. So we keep the old template helpers and events when we update the template content.
-         * We copy all the properties on the Template other than renderFunction (which in turn forms the view of the Template.
-         * We can't simply update the 'renderFunction' property of the template because Blaze won't render the template
-         * if the Template['templateName'] exists
-         */
-        if (key == 'viewName' || key == 'renderFunction') {
-          return;
-        }
-        templateCarry[key] = template[key];
-      });
-      delete Template[templateName];
-    }
-
-    Template[templateName] = Template("Template." + templateName, eval(SpacebarsCompiler.compile(
+    Template[templateName].renderFunction = eval(SpacebarsCompiler.compile(
         rawHtml, {
           isTemplate: true,
           sourceName: 'Template "' + templateName + '"'
         }
-    )));
-
-    Object.keys(templateCarry).forEach(function (key) {
-      Template[templateName][key] = templateCarry[key];
-    });
+    ));
 
     return Template[templateName];
   };
