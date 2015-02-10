@@ -9,16 +9,18 @@ Package.on_use(function (api, where) {
   api.versionsFrom("METEOR@0.9.1");
 
   api.use(['reload',
-           'jquery',
-           'ui',
-           'spacebars-compiler',
-           'autoupdate',
-           'deps']);
+    'jquery',
+    'ui',
+    'spacebars-compiler',
+    'autoupdate',
+    'underscore',
+    'deps']);
 
   api.add_files([
+    'js/nucleus-eval.js',
     'js/live-update.js',
     'js/utils.js'
   ], ['client']);
 
-  api.export && api.export(['LiveUpdate', 'ReactiveVar'],['client']);
+  api.export && api.export(['LiveUpdate'], ['client']);
 });
