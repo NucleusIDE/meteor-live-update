@@ -142,28 +142,6 @@ var LiveUpdateFactory = function () {
     this.bodyContent += bodyContent;
   };
 
-  this.reactifyTemplate = function reactifyTemplate(templateName) {
-    //this method was suggested by Devid Greenspan. Doesn't work as he suggested though
-    //https://groups.google.com/forum/#!topic/meteor-talk/veN_a1RNpXw
-    Template[templateName].renderFuncVar = new ReactiveVar(Template[templateName].renderFunction());
-    var template = Template[templateName];
-    var func = template.renderFuncVar.get();
-
-    Template[templateName].renderFunction = function () {
-      console.log("TEMPLATE RENDER FUNCTION CALLED", templateName);
-      // var args = new Array(arguments.length);
-      // var ctx = this;
-
-      // for(var i = 0; i < args.length; ++i) {
-      //   args[i] = arguments[i];
-      // }
-
-      // return func.apply(ctx, args);
-
-      return func;
-    };
-  };
-
   this.refreshPage = function (html) {
     console.log("LiveUpdate");
     var url = this.base_url,
