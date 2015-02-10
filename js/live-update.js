@@ -1,4 +1,4 @@
-var LiveUpdateFactory = function() {
+var LiveUpdateFactory = function () {
   var self = this;
 
   this.config = {};
@@ -6,7 +6,7 @@ var LiveUpdateFactory = function() {
   this._using_as_lib = false;
 
   this.use_as_lib = function (toggle) {
-    if(typeof toggle == 'undefined')
+    if (typeof toggle == 'undefined')
       toggle = true;
 
     this._using_as_lib = toggle;
@@ -15,40 +15,40 @@ var LiveUpdateFactory = function() {
   var DEBUG = !!this.config.debug;
 
   this._codeToCommentOutInEval = [
-    /**
-     * should contain a rejex matching string to comment out, or a function return string to comment out
-     */
+  /**
+   * should contain a rejex matching string to comment out, or a function return string to comment out
+   */
     //let's not recreate collections (meteor complains if we try to do so). We can comment it out
     // since collection would already be created when user first loads the app
-      /[\w\s]*=[\s]*new (Mongo|Meteor).Collection\([\W\w\.\);]*?\n/gm,
+    /[\w\s]*=[\s]*new (Mongo|Meteor).Collection\([\W\w\.\);]*?\n/gm,
     //when meteor methods are defined client side, meteor complains when we eval these. So let's comment them out too
-    function(str) {
+    function (str) {
       var start = str.indexOf('Meteor.methods({');
-      if(start < 0) return false;
+      if (start < 0) return false;
 
-      var matchPos = Utils.getContainingSubStr(str,'(', ')', start);
+      var matchPos = Utils.getContainingSubStr(str, '(', ')', start);
 
       return str.substring(start, matchPos[1]);
     }
   ];
 
-  this.configure = function(options) {
+  this.configure = function (options) {
     _.extend(this.config, options);
   };
 
   this.beforeUpdate = function beforeUpdate(options) {
-    if(_.isArray(options))
-      _.each(options, function(code) {
+    if (_.isArray(options))
+      _.each(options, function (code) {
         beforeUpdate(code);
       });
 
-    if(! _.isRegExp(options) && ! _.isFunction(options))
+    if (!_.isRegExp(options) && !_.isFunction(options))
       throw new Error("Only function or regexp (or array of those) accepted");
     else
       this._codeToCommentOutInEval.push(options);
   };
 
-  this._reRenderPage = function() {
+  this._reRenderPage = function () {
     /**
      * Here you'll see all the dirty 'hack-of-the-year's
      * What we are doing is like this:
@@ -59,12 +59,12 @@ var LiveUpdateFactory = function() {
      */
     var self = this;
 
-    function detachBody () {
+    function detachBody() {
       Template.body.view._domrange.detach(); //detach the dom of body template from page
       Template.body.view._domrange.destroy(); //I don't think this is needed, I just like the sound of it
     }
 
-    function resetBody () {
+    function resetBody() {
       delete Template.body;
 
       //this is the biggest hack here. There are obviously better ways to do this.
@@ -98,7 +98,7 @@ var LiveUpdateFactory = function() {
       };
     }
 
-    function refreshBody (js) {
+    function refreshBody(js) {
       eval(self.bodyContent);
       Template.body.renderToDocument();
       self.bodyContent = ''; //we need to reset the self.bodyContent to empty on new refresh
@@ -116,14 +116,14 @@ var LiveUpdateFactory = function() {
     }
 
 
-    if(Template.body.view) {
+    if (Template.body.view) {
       //Template.body is null when using iron-router
       detachBody();
       resetBody();
       refreshBody();
     }
 
-    if(typeof Router !== 'undefined' && Router._layout) {
+    if (typeof Router !== 'undefined' && Router._layout) {
       detachIronLayout();
       refreshIronLayout();
     }
@@ -131,15 +131,15 @@ var LiveUpdateFactory = function() {
 
   this.bodyContent = '';
 
-  this.updateBodyContent = function(js) {
+  this.updateBodyContent = function (js) {
     //we need to reset the body after new templates are evaled. So we keep the "Template.body.addContent" in this.bodyContent and update it with every file
     //and use it in the end
-    if(typeof js !== 'string') return;
+    if (typeof js !== 'string') return;
 
     var bodyContentRegex = /(Template.body.addContent\([\w\W]*\}\)\)\;)\nMeteor.startup\(/g;
 
     var bodyContent = js.match(bodyContentRegex) ? js.match(bodyContentRegex)[0].replace('Meteor.startup(', '') : '';
-    this.bodyContent += bodyContent ;
+    this.bodyContent += bodyContent;
   };
 
   this.reactifyTemplate = function reactifyTemplate(templateName) {
@@ -149,7 +149,7 @@ var LiveUpdateFactory = function() {
     var template = Template[templateName];
     var func = template.renderFuncVar.get();
 
-    Template[templateName].renderFunction = function() {
+    Template[templateName].renderFunction = function () {
       console.log("TEMPLATE RENDER FUNCTION CALLED", templateName);
       // var args = new Array(arguments.length);
       // var ctx = this;
@@ -164,27 +164,29 @@ var LiveUpdateFactory = function() {
     };
   };
 
-  this.refreshPage = function(html) {
+  this.refreshPage = function (html) {
     console.log("LiveUpdate");
     var url = this.base_url,
         self = this;
 
     // let's ignore package files and only re-eval user created js/templates
-    var jsToFetch = Utils.getAllScriptSrc(html).filter(function(src){return ! /\/packages\//.test(src);});
-    _.each(jsToFetch, function(jsFile, index) {
+    var jsToFetch = Utils.getAllScriptSrc(html).filter(function (src) {
+      return !/\/packages\//.test(src);
+    });
+    _.each(jsToFetch, function (jsFile, index) {
       var req = $.get(jsFile);
-      req.always(function(res) {
+      req.always(function (res) {
         //It's strange, the responseText exists on error response not on the success response for compile Template files.
         // this is why I am using always above instead of success or done
         //Sometime response object has the required js in res.responseText (in case of compiled template files)
         // and on other times, it's returned as expected response. Below statement handles that
         var js = typeof res === 'string' ? res : res.responseText;
 
-        var getNamesFromCompiledTemplate = function(snippet) {
+        var getNamesFromCompiledTemplate = function (snippet) {
           var templateNameRegex = /Template\[\"([a-zA-Z_\-]*)\"\]/gm,
               names = [];
           var match = templateNameRegex.exec(snippet);
-          while(match !== null) {
+          while (match !== null) {
             names.push(match[1]);
             match = templateNameRegex.exec(snippet);
           }
@@ -192,36 +194,37 @@ var LiveUpdateFactory = function() {
         };
 
         // _.each(self._codeToCommentOutInEval, function(codeToComment) {
-        _.each(self._codeToCommentOutInEval, function(codeToComment) {
-          if(typeof codeToComment === 'function') {
+        _.each(self._codeToCommentOutInEval, function (codeToComment) {
+          if (typeof codeToComment === 'function') {
             var str = codeToComment(js);
-            if(str)
-              js = js.replace(str, '/*'+ str + '*/');
+            if (str)
+              js = js.replace(str, '/*' + str + '*/');
           } else
-            js = js.replace(codeToComment, function(match) {
-              res = "/*"+ match + "*/";
+            js = js.replace(codeToComment, function (match) {
+              res = "/*" + match + "*/";
               try {
                 //in case of local collections defined in helpers, we need to redefine them when templates are reconstructed
                 //so try to eval the match or comment it otherwise
                 eval(match);
                 res = match;
-              } catch(e) {}
+              } catch (e) {
+              }
               return res;
             });
         });
 
-        var reval = function(script) {
+        var reval = function (script) {
           var _eval = eval;
           try {
             var res = _eval(script);
-          } catch(error ) {
-            if(DEBUG)
+          } catch (error) {
+            if (DEBUG)
               console.log("couldn't eval", script);
             console.log(error);
           }
         };
 
-        _.each(getNamesFromCompiledTemplate(js), function(tn) {
+        _.each(getNamesFromCompiledTemplate(js), function (tn) {
           //we need to delete the templates otherwise meteor complains that there are more than one templates of same name
           delete Template[tn];
         });
@@ -229,7 +232,7 @@ var LiveUpdateFactory = function() {
         reval(js);
         self.updateBodyContent(js);
 
-        if (index === jsToFetch.length-1) {
+        if (index === jsToFetch.length - 1) {
           //execute if this file was the last one to eval
           self._reRenderPage();
         }
@@ -254,8 +257,13 @@ var LiveUpdateFactory = function() {
      * * rawHtml        - Html as a string
      * * template_name  - name of the template to be created with rawHtml as content
      */
-    if(Template[templateName]) {
-      console.log("Deleting Template", templateName);
+
+    var templateHelpers = false,
+        templateEvents = false;
+
+    if (Template[templateName]) {
+      templateHelpers = Template[templateName].__helpers;
+      templateEvents = Template[templateName].__eventMaps;
       delete Template[templateName];
     }
 
@@ -266,11 +274,23 @@ var LiveUpdateFactory = function() {
         }
     )));
 
+    if (templateHelpers) {
+      /**
+       * Since we are handling only the HTML templates in this function, it doesn't make sense to re-eval the Helpers
+       * and events for each template. So we keep the old template helpers and events when we update the template content.
+       */
+      Template[templateName].__helpers = templateHelpers
+    }
+    if (templateEvents) {
+      Template[templateName].__eventMaps = templateEvents;
+    }
+
     return Template[templateName];
   };
 
   this.refreshTemplate = function (rawHtml) {
     var allTemplates = jQuery.parseHTML(rawHtml);
+
     jQuery.each(allTemplates, function (i, el) {
       if (el.nodeName.toLowerCase() == 'template') {
         var $el = jQuery(el);
@@ -280,6 +300,8 @@ var LiveUpdateFactory = function() {
         self._create_template_from_html(name, html);
       }
     });
+
+    this._reRenderPage();
   };
 
   this.safeEvalJs = function (newJS) {
@@ -287,17 +309,17 @@ var LiveUpdateFactory = function() {
   };
 
   var should_reload = false;
-  this.interceptReload = function() {
+  this.interceptReload = function () {
     // stopping reloads on file changes and calling refreshPage after initial app is loaded,
     // i.e after the user has loaded the app, and has changed the file
     var self = this;
 
-    Reload._onMigrate("LiveUpdate", function(retry) {
+    Reload._onMigrate("LiveUpdate", function (retry) {
       // triggering self reactive computation inside Reload._onMigrate so it won't get triggered on initial page load or when user refreshes the page.
       // Self let user to see un-touched (by LiveUpdate) version of her app if she refreshes the app manually
-      Deps.autorun(function() {
+      Deps.autorun(function () {
         // let's not intercept the reload if we are using LiveUpdate as a library, i.e doing the hot-loading manually
-        if(self._using_as_lib) {
+        if (self._using_as_lib) {
           return;
         }
 
@@ -313,7 +335,7 @@ var LiveUpdateFactory = function() {
           return;
         }
 
-        $.get(this.base_url).success(function(html) {
+        $.get(this.base_url).success(function (html) {
           if (self.config.disable) {
             console.log("SHOULD RELOAD");
             should_reload = true;
