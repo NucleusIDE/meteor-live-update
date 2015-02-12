@@ -132,6 +132,10 @@ Eval.prototype.eval = function (code) {
   code = this._neutralizeCode(code);
 
   //console.log("EVALING CODE", code);
-  eval(code);
+  try {
+    eval(code);
+  } catch (e) {
+    console.error("Failed to eval code:", e.message);
+  }
   this._postEval()
 };
