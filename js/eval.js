@@ -11,7 +11,7 @@ Eval = function () {
 
   this.registerPatch('eventsCode',
       function eventDetector(code, patchName) {
-        var regex =  /Template\.([a-zA-Z_\$]+)\.events/g;
+        var regex = /Template\.([a-zA-Z_\$]+)\.events/g;
 
         var match = regex.exec(code);
         return match ? match[1] : false;
@@ -21,6 +21,17 @@ Eval = function () {
         return code;
       });
 
+  this.registerPatch('creatingCollection',
+      function (code, patchName) {
+        var regex = /[\w\s]*=[\s]*new[\s]*(Mongo|Meteor)\.Collection\([\'\"\w\d]*\)\;/mg;
+        return code.match(regex);
+      },
+      function (code, matches) {
+        matches.forEach(function (match) {
+          code = code.replace(match, ';try { ' + match + '} catch(e) { };')
+        });
+        return code;
+      });
 };
 
 Eval.prototype.registerPatch = function (patchName, detector, neutralizer) {
