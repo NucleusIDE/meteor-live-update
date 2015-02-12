@@ -281,6 +281,7 @@ var LiveUpdateFactory = function () {
       return;
     }
     this.Eval.eval(newJs);
+    this._reRenderPage();
   };
 
   var should_reload = false;
