@@ -32,9 +32,25 @@ Eval = function () {
         });
         return code;
       });
+  
+  this.registerPatch('ironRouterCode', {
+    detector: function (code) {
+      var regex = /Router\.(configure|route|map)/gm;
+      return regex.test(code);
+    },
+    neutralizer: function (code, match) {
+      return code;
+    },
+    postEval: function () {
+      var routeController = Router.current(),
+          params = routeController.params,
+          routeName = routeController.route.name;
+      Router.go(routeName, params);
+    }
+  })
 };
 
-Eval.prototype.registerPatch = function (patchName, detector, neutralizer) {
+Eval.prototype.registerPatch = function (patchName, detector, neutralizer, postEval) {
   /**
    *
    * Register a patch. Takes at least 3 arguments
@@ -49,36 +65,29 @@ Eval.prototype.registerPatch = function (patchName, detector, neutralizer) {
 
   var args = Array.prototype.slice.call(arguments, 0);
 
-  if (args.length < 3) {
-    throw new Meteor.Error("Invalid Arguments: Must be registerPatch('patchName', detectorFunc, neutraliserFunc");
+  if (typeof detector !== 'object' && args.length < 3) {
+    throw new Meteor.Error("Invalid Arguments for registerPatch: Must passs patchName, detector, neutralizer (and postEval (optional), or an object with these keys");
   }
 
-  if (typeof this.patches[patchName] !== 'undefined') {
-    console.log('Patch ' + patchName + ' already exists');
+  if (typeof detector !== 'function' && typeof detector === 'object') {
+    this.patches[patchName] = detector;
     return;
   }
 
   this.patches[patchName] = {
     detector: detector,
-    neutralizer: neutralizer
+    neutralizer: neutralizer,
+    postEval: postEval
   }
 };
 
-Eval.prototype._getDetectorFunc = function (patchName) {
-  var detector = this.patches[patchName].detector;
-  if (typeof detector == 'string') {
-    detector = this._getDetectorFunc(detector);
+Eval.prototype._getPatchFunc = function (patchName, funcName) {
+  var func = this.patches[patchName][funcName];
+  if (typeof func == 'string') {
+    func = this._getPatchFunc(func);
   }
 
-  return detector;
-};
-Eval.prototype._getNeutralizerFunc = function (patchName) {
-  var neutralizer = this.patches[patchName].neutralizer;
-  if (typeof neutralizer == 'string') {
-    neutralizer = this._getNeutralizerFunc(neutralizer);
-  }
-
-  return neutralizer;
+  return func;
 };
 
 Eval.prototype.applyPatch = function (patchName, code) {
@@ -87,8 +96,8 @@ Eval.prototype.applyPatch = function (patchName, code) {
     return;
   }
 
-  var detector = this._getDetectorFunc(patchName),
-      neutralizer = this._getNeutralizerFunc(patchName);
+  var detector = this._getPatchFunc(patchName, 'detector'),
+      neutralizer = this._getPatchFunc(patchName, 'neutralizer');
 
   var match = detector(code, patchName);
   if (match) {
@@ -109,9 +118,20 @@ Eval.prototype._neutralizeCode = function (code) {
   return code;
 };
 
+Eval.prototype._postEval = function () {
+  var self = this;
+  Object.keys(this.patches).forEach(function (patch) {
+    var func = self._getPatchFunc(patch, 'postEval');
+    if (func) {
+      func();
+    }
+  });
+};
+
 Eval.prototype.eval = function (code) {
   code = this._neutralizeCode(code);
 
   //console.log("EVALING CODE", code);
   eval(code);
+  this._postEval()
 };
