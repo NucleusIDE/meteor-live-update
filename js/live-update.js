@@ -3,6 +3,7 @@ var LiveUpdateFactory = function () {
 
   this.config = {};
   this.base_url = document.location.host;
+  this.Eval = new Eval();
   this._usingAsLib = false;
 
   this.useAsLib = function (toggle) {
@@ -279,7 +280,7 @@ var LiveUpdateFactory = function () {
     if (!newJs) {
       return;
     }
-    Eval(newJs);
+    this.Eval.eval(newJs);
   };
 
   var should_reload = false;

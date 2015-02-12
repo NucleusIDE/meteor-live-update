@@ -17,7 +17,7 @@ Package.on_use(function (api, where) {
     'deps']);
 
   api.add_files([
-    'js/nucleus-eval.js',
+    'js/eval.js',
     'js/live-update.js',
     'js/utils.js'
   ], ['client']);
