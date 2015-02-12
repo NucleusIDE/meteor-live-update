@@ -10,22 +10,14 @@ Eval = function () {
   this.patches = {};
 
   this.registerPatch('eventsCode',
-      function eventDetector(code, regex) {
-        regex = regex || /Template\.([a-zA-Z_\$]+)\.events/g;
-        var match = regex.exec(code)
+      function eventDetector(code, patchName) {
+        var regex =  /Template\.([a-zA-Z_\$]+)\.events/g;
+
+        var match = regex.exec(code);
         return match ? match[1] : false;
       },
       function eventNeutralizer(code, templateName) {
         Template[templateName].__eventMaps = [];
-        return code;
-      });
-
-  this.registerPatch('helpersCode',
-      function helperDetector(code) {
-        var helperCodeRegex = /Template\.([a-zA-Z_\$]+)\.helpers/g;
-        return helperCodeRegex.test(code);
-      },
-      function helperNeutralizer(code, match) {
         return code;
       });
 
@@ -87,9 +79,9 @@ Eval.prototype.applyPatch = function (patchName, code) {
   var detector = this._getDetectorFunc(patchName),
       neutralizer = this._getNeutralizerFunc(patchName);
 
-  var match = detector(code);
+  var match = detector(code, patchName);
   if (match) {
-    return neutralizer(code, match);
+    return neutralizer(code, match, patchName);
   }
 
   return code;
