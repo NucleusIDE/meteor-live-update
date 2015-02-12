@@ -15,7 +15,8 @@ Eval = function () {
         var match = regex.exec(code)
         return match ? match[1] : false;
       },
-      function eventNeutralizer(code, match) {
+      function eventNeutralizer(code, templateName) {
+        Template[templateName].__eventMaps = [];
         return code;
       });
 
@@ -108,6 +109,6 @@ Eval.prototype._neutralizeCode = function (code) {
 Eval.prototype.eval = function (code) {
   code = this._neutralizeCode(code);
 
-  console.log("EVALING CODE", code);
-  //eval(this.code);
+  //console.log("EVALING CODE", code);
+  eval(code);
 };
