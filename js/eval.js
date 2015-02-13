@@ -56,25 +56,43 @@ Eval = function () {
 
   this.registerPatch('autoruns',
       function autorunDetector(newCode, oldCode) {
-          var start = oldCode.indexOf('Deps.autorun') > -1 ? oldCode.indexOf('Deps.autorun') : oldCode.indexOf('Tracker.autorun');
+        var getAutorunFunc = function (index, oldCode) {
+          index = index || 0;
+          var start = oldCode.indexOf('Deps.autorun', index) > -1 ? oldCode.indexOf('Deps.autorun', index) : oldCode.indexOf('Tracker.autorun', index);
           if (start < 0) return false;
 
           var matchPos = Utils.getContainingSubStr(oldCode, '(', ')', start);
+          return {
+            autorunFunc: oldCode.substring(start, matchPos[1] - 1).replace('Deps.autorun(', '').replace('Tracker.autorun(', ''),
+            index: start
+          };
+        };
 
-          var autorunFuc = oldCode.substring(start, matchPos[1]-1).replace('Deps.autorun(', '').replace('Tracker.autorun(', '');
+        var matches = [];
+        var match = getAutorunFunc(0, oldCode);
+        while (match !== false) {
+          matches.push(match.autorunFunc);
+          match = getAutorunFunc(match.index + 1, oldCode);
+        }
 
-        return autorunFuc;
-
+        return matches;
       },
-      function autorunNeutralizer(code, autorunFunc) {
-        self.autoruns.forEach(function (computation, i) {
-          var compFunc = computation._func.toString().replace(/[\r\n\s]+/mg, '');
-              autorunFunc = autorunFunc.replace(/\s/g, '');
+      function autorunNeutralizer(code, matches) {
+        if (!matches.length)
+          return code;
 
-          if (compFunc === autorunFunc) {
-            computation.stop();
-          }
+
+        matches.forEach(function (autorunFunc) {
+          self.autoruns.forEach(function (computation, i) {
+            var compFunc = computation._func.toString().replace(/[\r\n\s]+/mg, '');
+            autorunFunc = autorunFunc.replace(/\s/g, '');
+
+            if (compFunc === autorunFunc) {
+              computation.stop();
+            }
+          });
         });
+
         return code;
       });
 };
