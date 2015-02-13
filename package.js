@@ -17,9 +17,9 @@ Package.on_use(function (api, where) {
     'deps']);
 
   api.add_files([
+    'js/utils.js',
     'js/eval.js',
-    'js/live-update.js',
-    'js/utils.js'
+    'js/live-update.js'
   ], ['client']);
 
   api.export && api.export(['LiveUpdate'], ['client']);

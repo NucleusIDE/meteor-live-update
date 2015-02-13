@@ -5,6 +5,7 @@ var LiveUpdateFactory = function () {
   this.base_url = document.location.host;
   this.Eval = new Eval();
   this._usingAsLib = false;
+  this.utils = Utils;
 
   this.useAsLib = function (toggle) {
     if (typeof toggle == 'undefined')
@@ -219,11 +220,11 @@ var LiveUpdateFactory = function () {
     });
   };
 
-  this.refreshFile = function (fileContent, filetype) {
+  this.refreshFile = function (fileContent, filetype, oldFileContent) {
     if (filetype == 'html') {
       this.refreshTemplate(fileContent);
     } else if (filetype === 'js') {
-      this.safeEvalJs(fileContent);
+      this.safeEvalJs(fileContent, oldFileContent);
     } else {
       console.log("LiveUpdate doesn't know how to treat a", filetype, "file");
     }
@@ -276,11 +277,11 @@ var LiveUpdateFactory = function () {
     this._reRenderPage();
   };
 
-  this.safeEvalJs = function (newJs) {
+  this.safeEvalJs = function (newJs, oldJs) {
     if (!newJs) {
       return;
     }
-    this.Eval.eval(newJs);
+    this.Eval.eval(newJs, oldJs);
     this._reRenderPage();
   };
 

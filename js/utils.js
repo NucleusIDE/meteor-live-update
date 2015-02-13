@@ -31,5 +31,3 @@ Utils = {
     }));
   }
 };
-
-LiveUpdate.utils = Utils;

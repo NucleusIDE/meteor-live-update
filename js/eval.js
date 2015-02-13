@@ -7,10 +7,15 @@ Eval = function () {
     return new Eval();
   }
 
+  var self = this;
+
   this.patches = {};
+  this.autoruns = [];
+
+  this._override_autorun();
 
   this.registerPatch('eventsCode',
-      function eventDetector(code, patchName) {
+      function eventDetector(code) {
         var regex = /Template\.([a-zA-Z_\$]+)\.events/g;
 
         var match = regex.exec(code);
@@ -22,7 +27,7 @@ Eval = function () {
       });
 
   this.registerPatch('creatingCollection',
-      function (code, patchName) {
+      function (code) {
         var regex = /[\w\s]*=[\s]*new[\s]*(Mongo|Meteor)\.Collection\([\'\"\w\d]*\)\;/mg;
         return code.match(regex);
       },
@@ -32,7 +37,7 @@ Eval = function () {
         });
         return code;
       });
-  
+
   this.registerPatch('ironRouterCode', {
     detector: function (code) {
       var regex = /Router\.(configure|route|map)/gm;
@@ -48,6 +53,43 @@ Eval = function () {
       Router.go(routeName, params);
     }
   })
+
+  this.registerPatch('autoruns',
+      function autorunDetector(newCode, oldCode) {
+          var start = oldCode.indexOf('Deps.autorun') > -1 ? oldCode.indexOf('Deps.autorun') : oldCode.indexOf('Tracker.autorun');
+          if (start < 0) return false;
+
+          var matchPos = Utils.getContainingSubStr(oldCode, '(', ')', start);
+
+          var autorunFuc = oldCode.substring(start, matchPos[1]-1).replace('Deps.autorun(', '').replace('Tracker.autorun(', '');
+
+        return autorunFuc;
+
+      },
+      function autorunNeutralizer(code, autorunFunc) {
+        self.autoruns.forEach(function (computation, i) {
+          var compFunc = computation._func.toString().replace(/[\r\n\s]+/mg, '');
+              autorunFunc = autorunFunc.replace(/\s/g, '');
+
+          if (compFunc === autorunFunc) {
+            computation.stop();
+          }
+        });
+        return code;
+      });
+};
+
+Eval.prototype._override_autorun = function () {
+  var originalAutorun = Tracker.autorun,
+      self = this,
+      evalId = 1;
+  Tracker.autorun = function (func) {
+    var computation = originalAutorun(func);
+    self.autoruns.push(computation);
+
+    return computation;
+  };
+
 };
 
 Eval.prototype.registerPatch = function (patchName, detector, neutralizer, postEval) {
@@ -90,7 +132,7 @@ Eval.prototype._getPatchFunc = function (patchName, funcName) {
   return func;
 };
 
-Eval.prototype.applyPatch = function (patchName, code) {
+Eval.prototype.applyPatch = function (patchName, code, oldCode) {
   if (typeof this.patches[patchName] == 'undefined') {
     console.log('No such patch registered: ', patchName);
     return;
@@ -99,20 +141,20 @@ Eval.prototype.applyPatch = function (patchName, code) {
   var detector = this._getPatchFunc(patchName, 'detector'),
       neutralizer = this._getPatchFunc(patchName, 'neutralizer');
 
-  var match = detector(code, patchName);
+  var match = detector(code, oldCode);
   if (match) {
-    return neutralizer(code, match, patchName);
+    return neutralizer(code, match);
   }
 
   return code;
 };
 
-Eval.prototype._neutralizeCode = function (code) {
+Eval.prototype._neutralizeCode = function (code, oldCode) {
   code = '(function(){' + code + '})()';
   var self = this;
 
   Object.keys(this.patches).forEach(function (patchName) {
-    code = self.applyPatch(patchName, code);
+    code = self.applyPatch(patchName, code, oldCode);
   });
 
   return code;
@@ -128,8 +170,8 @@ Eval.prototype._postEval = function () {
   });
 };
 
-Eval.prototype.eval = function (code) {
-  code = this._neutralizeCode(code);
+Eval.prototype.eval = function (code, oldCode) {
+  code = this._neutralizeCode(code, oldCode);
 
   //console.log("EVALING CODE", code);
   try {
