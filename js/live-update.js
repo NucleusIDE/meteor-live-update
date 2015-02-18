@@ -4,7 +4,7 @@ var LiveUpdateFactory = function () {
   this.config = {};
   this.base_url = document.location.host;
   this.Eval = new Eval();
-  this._usingAsLib = false;
+  this._usingAsLib = true;
   this.utils = Utils;
 
   this.useAsLib = function (toggle) {
