@@ -7,14 +7,24 @@ var fs = Npm.require('fs'),
     rread = Npm.require('recursive-readdir');
 
 
-
 var CssCollector = function () {
+  var self = this;
+
   this.rootDir = '';
   this.cssLoadList = [];
   this.validCssTypes = ['.css', '.less', '.sass'];
+  this.cssString = '';
 
   this._setRootDir();
   this._setCssLoadList();
+
+  var cssInterval = Meteor.setInterval(function () {
+    if (self.cssLoadList.length) {
+      Meteor.clearInterval(cssInterval);
+
+      self._collectCss(self.cssLoadList);
+    }
+  }, 200);
 };
 
 CssCollector.prototype._setRootDir = function () {
@@ -53,13 +63,27 @@ CssCollector.prototype._setCssLoadList = function () {
       }
       return index;
     });
-    
+
     self.cssLoadList = cssFiles;
   })
 };
 
-CssCollector.prototype._collectCss = function () {
+CssCollector.prototype._collectCss = function (fileList) {
+  var self = this;
 
+  fileList.forEach(function (file) {
+    fs.readFile(file, 'utf-8', function (err, res) {
+      self.cssString += "\n/* " +
+      "START FILE: " +
+      file +
+      " */ \n";
+      self.cssString += res;
+      self.cssString += "/*" +
+      "END FILE: " +
+      file +
+      " */\n";
+    });
+  });
 };
 
 var LiveUpdateCssCollector = new CssCollector();
@@ -69,7 +93,7 @@ Meteor.methods({
     return LiveUpdateCssCollector.cssLoadList;
   },
   liveUpdateGetAllCSS: function (options) {
-    return LiveUpdateCssCollector.cssLoadList;
+    return LiveUpdateCssCollector.cssString;
   }
 });
 
