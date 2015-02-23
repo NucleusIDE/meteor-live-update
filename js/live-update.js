@@ -4,6 +4,7 @@ var LiveUpdateFactory = function () {
   this.config = {};
   this.base_url = document.location.host;
   this.Eval = new Eval();
+  this.CssUpdate = new CssUpdate();
   this._usingAsLib = true;
   this.utils = Utils;
 
@@ -220,12 +221,20 @@ var LiveUpdateFactory = function () {
     });
   };
 
-  this.refreshFile = function (fileContent, filetype, oldFileContent) {
+  this.refreshFile = function (options) {
+    var fileContent = options.newContent,
+        filetype = options.fileType,
+        oldFileContent = options.oldContent,
+        filepath = options.filepath;
+
     if (filetype == 'html') {
       this.refreshTemplate(fileContent);
     } else if (filetype === 'js') {
       this.safeEvalJs(fileContent, oldFileContent);
-    } else {
+    } if (filetype === 'css') {
+      this.CssUpdate.update(filepath, fileContent);
+    }
+    else {
       console.log("LiveUpdate doesn't know how to treat a", filetype, "file");
     }
   };
