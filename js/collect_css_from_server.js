@@ -13,7 +13,12 @@ var CssCollector = function () {
   this.rootDir = '';
   this.cssLoadList = [];
   this.validCssTypes = ['.css', '.less', '.sass'];
-  this.cssString = '';
+
+  this.cssStrings = {
+    css: '',
+    less: '',
+    sass: ''
+  };
 
   this._setRootDir();
   this._setCssLoadList();
@@ -73,12 +78,14 @@ CssCollector.prototype._collectCss = function (fileList) {
 
   fileList.forEach(function (file) {
     fs.readFile(file, 'utf-8', function (err, res) {
-      self.cssString += "\n/* " +
+      var key = file.split('.')[file.split('.').length - 1];
+
+      self.cssStrings[key] += "\n/* " +
       "START FILE: " +
       file +
       " */ \n";
-      self.cssString += res;
-      self.cssString += "/*" +
+      self.cssStrings[key] += res;
+      self.cssStrings[key] += "/*" +
       "END FILE: " +
       file +
       " */\n";
@@ -93,7 +100,7 @@ Meteor.methods({
     return LiveUpdateCssCollector.cssLoadList;
   },
   liveUpdateGetAllCSS: function (options) {
-    return LiveUpdateCssCollector.cssString;
+    return LiveUpdateCssCollector.cssStrings;
   }
 });
 

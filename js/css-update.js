@@ -4,8 +4,10 @@
 
 CssUpdate = function () {
   this.injectionNode = null;
+  this.cssStrings = {};
 
   this.setupInjectionNode();
+  this.updateCssStrings();
 };
 
 CssUpdate.prototype.setupInjectionNode = function () {
@@ -19,10 +21,17 @@ CssUpdate.prototype.setupInjectionNode = function () {
   return this.injectionNode;
 };
 
-CssUpdate.prototype.update = function (fielname, filecontent) {
+CssUpdate.prototype.updateCssStrings = function () {
   var self = this;
+  Meteor.call('liveUpdateGetAllCSS', function (err, res) {
+    if (err) {
+      throw err;
+    }
 
-  Meteor.call("liveUpdateGetAllCSS", function (err, res) {
-    self.injectionNode.innerHTML = res;
-  });
+    self.cssStrings = res;
+  })
+};
+
+CssUpdate.prototype.update = function (fielname, filecontent) {
+
 };
