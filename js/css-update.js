@@ -3,13 +3,21 @@
  */
 
 CssUpdate = function () {
+  var self = this;
+
   this.injectionNode = null;
   this.cssStrings = {};
   this.cssLoadList = [];
 
+  this.outputCss = new ReactiveVar();
+  this.updatorComputation = null;
+
   this.setupInjectionNode();
-  this.updateCssLoadList();
+  this.updateCssLoadList(function (err, res) {
+    self.initializeCompilers();
+  });
   this.updateCssStrings();
+  this.setupCssUpdateAutorun();
 };
 
 CssUpdate.prototype.setupInjectionNode = function () {
@@ -23,6 +31,26 @@ CssUpdate.prototype.setupInjectionNode = function () {
   return this.injectionNode;
 };
 
+CssUpdate.prototype.initializeCompilers = function () {
+  var compilersUsed = this.getPreprocessorUsed();
+
+  if (_.contains(compilersUsed, 'less')) {
+    NucleusTranscompiler.initialize_less();
+  }
+
+  if (_.contains(compilersUsed, 'sass')) {
+    NucleusTranscompiler.initialize_sass();
+  }
+
+  this.Transcompiler = NucleusTranscompiler;
+};
+
+CssUpdate.prototype.getPreprocessorUsed = function () {
+  return _.uniq(this.cssLoadList.map(function (file) {
+    return file.split('.')[file.split('.').length - 1];
+  }));
+};
+
 CssUpdate.prototype.updateCssStrings = function () {
   var self = this;
   Meteor.call('liveUpdateGetAllCSS', function (err, res) {
@@ -33,10 +61,11 @@ CssUpdate.prototype.updateCssStrings = function () {
     self.cssStrings = res;
   })
 };
-CssUpdate.prototype.updateCssLoadList = function () {
+CssUpdate.prototype.updateCssLoadList = function (cb) {
   var self = this;
   Meteor.call('liveUpdateGetCSSLoadList', function (err, res) {
     self.cssLoadList = res;
+    cb(err, res);
   });
 };
 
@@ -49,7 +78,7 @@ CssUpdate.prototype.getFileContent = function (filename) {
   return result[0];
 };
 
-CssUpdate.prototype.unfoldPreprocessorCode = function () {
+CssUpdate.prototype.getUnfoldedPreprocessorCode = function () {
   /**
    * We have imports in the less/sass code. This function replace those imports with actual code and create a single
    * big string which can be compiled to CSS
@@ -106,13 +135,48 @@ CssUpdate.prototype.unfoldPreprocessorCode = function () {
   };
 
   mainFiles.forEach(function (filename) {
-    finalCss += self.getFileContent(filename);;
+    finalCss += self.getFileContent(filename);
     finalCss = unfoldFileContent(finalCss);
   });
 
   return finalCss;
 };
 
+CssUpdate.prototype.updateOutputCss = function () {
+  var css = this.cssStrings.css || '';
+  var preprocessorUsed = this.getPreprocessorUsed();
+
+  if (preprocessorUsed.length > 1) {
+    var prepCode = this.getUnfoldedPreprocessorCode(),
+        self = this;
+
+    if (_.contains(preprocessorUsed, 'less')) {
+      this.Transcompiler.less.render(prepCode, function (err, res) {
+        if (err) {
+          throw err;
+        }
+        self.outputCss.set(res.css);
+      })
+    }
+    else if (_.contains(preprocessorUsed, 'sass')) {
+      this.Transcompiler.Sass.compile(prepCode, function (css) {
+        self.outputCss.set(css);
+      })
+    }
+  }
+
+  return css;
+};
+
 CssUpdate.prototype.update = function (fielname, filecontent) {
 
+};
+
+CssUpdate.prototype.setupCssUpdateAutorun = function () {
+  var self = this;
+  this.updatorComputation = Tracker.autorun(function () {
+    var outputCss = self.outputCss.get();
+
+    console.log(outputCss);
+  });
 };

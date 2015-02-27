@@ -18,7 +18,10 @@ Package.on_use(function (api, where) {
     'spacebars-compiler',
     'autoupdate',
     'underscore',
-    'deps']);
+    'deps',
+    'reactive-var',
+    'nucleuside:transcompiler@0.0.1'
+  ]);
 
   api.add_files([
     'js/utils.js',
