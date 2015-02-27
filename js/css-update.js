@@ -32,6 +32,14 @@ CssUpdate.prototype.updateCssStrings = function () {
   })
 };
 
+CssUpdate.prototype.getFileContent = function (filename, filetype) {
+  filename = filename + '.' + filetype;
+  var resRegex = new RegExp('\/\\* START FILE: ' + filename + ' \\*/([\\s\\S]+)\\*END FILE: ' + filename + ' \\*/', 'mg'),
+      result = this.cssStrings[filetype].match(resRegex);
+
+  return result[0];
+};
+
 CssUpdate.prototype.update = function (fielname, filecontent) {
 
 };
