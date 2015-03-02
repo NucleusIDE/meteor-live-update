@@ -73,6 +73,22 @@ CssCollector.prototype._setCssLoadList = function () {
   })
 };
 
+CssCollector.prototype._markContent = function(content, filename) {
+  var result = "\n/* " +
+        "START FILE: " +
+        filename +
+        " */ \n";
+
+  result += content;
+
+  result += "/*" +
+    "END FILE: " +
+    filename +
+    " */\n";
+
+  return result;
+};
+
 CssCollector.prototype._collectCss = function (fileList) {
   var self = this;
 
@@ -80,15 +96,8 @@ CssCollector.prototype._collectCss = function (fileList) {
     fs.readFile(file, 'utf-8', function (err, res) {
       var key = file.split('.')[file.split('.').length - 1];
 
-      self.cssStrings[key] += "\n/* " +
-      "START FILE: " +
-      file +
-      " */ \n";
-      self.cssStrings[key] += res;
-      self.cssStrings[key] += "/*" +
-      "END FILE: " +
-      file +
-      " */\n";
+      self.cssStrings[key] += self._markContent(res, file);
+
     });
   });
 };
@@ -103,4 +112,3 @@ Meteor.methods({
     return LiveUpdateCssCollector.cssStrings;
   }
 });
-

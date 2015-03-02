@@ -80,7 +80,8 @@ CssUpdate.prototype.getFileContent = function (filename) {
   var resRegex = new RegExp('\/\\* START FILE: ' + filename + ' \\*/([\\s\\S]+)\\*END FILE: ' + filename + ' \\*/', 'mg'),
       result = this.cssStrings[filetype].match(resRegex);
 
-  return result[0];
+  if (result) return result[0];
+  else console.log('No content for', filename);
 };
 
 CssUpdate.prototype.getUnfoldedPreprocessorCode = function () {
@@ -151,7 +152,7 @@ CssUpdate.prototype.updateOutputCss = function () {
   var css = this.cssStrings.css || '';
   var preprocessorUsed = this.getPreprocessorUsed();
 
-  if (preprocessorUsed.length > 1) {
+  if (_.contains(preprocessorUsed, 'less') || _.contains(preprocessorUsed, 'sass')) {
     var prepCode = this.getUnfoldedPreprocessorCode(),
         self = this;
 
@@ -160,33 +161,55 @@ CssUpdate.prototype.updateOutputCss = function () {
         if (err) {
           throw err;
         }
-        console.log("Updating CSS in LESS");
-        if (res.css == self.outputCss.get()) {
-          console.log("New css is same as old. Bitch!");
+        console.log('setting new less code');
+        if (res.css === self.outputCss.get()) {
+          console.log('new Css is same ');
         }
+
         self.outputCss.set(res.css);
-      })
+      });
     }
     else if (_.contains(preprocessorUsed, 'sass')) {
       this.Transcompiler.Sass.compile(prepCode, function (css) {
         self.outputCss.set(css);
-      })
+      });
     }
+  } else {
+    console.log('no preprocessor used');
   }
 
   return css;
 };
 
+CssUpdate.prototype._markContent = function(content, filename) {
+  var result = "\n/* " +
+        "START FILE: " +
+        filename +
+        " */ \n";
+
+  result += content;
+
+  result += "/*" +
+    "END FILE: " +
+    filename +
+    " */\n";
+
+  return result;
+};
+
 CssUpdate.prototype.update = function (filename, filecontent) {
+  console.log('got new content to update');
   var oldContent = this.getFileContent(filename);
   var filetype = filename.split('.')[filename.split('.').length - 1];
 
-  this.cssStrings[filetype] = this.cssStrings[filetype].replace(oldContent, filecontent);
-
+  this.cssStrings[filetype] = this.cssStrings[filetype].replace(oldContent, this._markContent(filecontent, filename));
+  console.log('going to call updateOutputCss');
   this.updateOutputCss();
 };
 
-CssUpdate.prototype.liveupdateCss = function (newCss) {
+CssUpdate.prototype.updateCssOnPage = function (newCss) {
+  console.log("New css is", newCss);
+
   var oldLinks = [];
   _.each(document.getElementsByTagName('link'), function (link) {
     if (link.className === '__meteor-css__') {
@@ -213,7 +236,7 @@ CssUpdate.prototype.setupCssUpdateAutorun = function () {
       var outputCss = self.outputCss.get();
       console.log("autorun running");
       if (outputCss) {
-        self.liveupdateCss(outputCss);
+        self.updateCssOnPage(outputCss);
       } else {
         console.log("No CSS to Update");
       }
