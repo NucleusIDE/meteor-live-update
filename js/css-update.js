@@ -168,15 +168,46 @@ CssUpdate.prototype.updateOutputCss = function () {
   return css;
 };
 
-CssUpdate.prototype.update = function (fielname, filecontent) {
+CssUpdate.prototype.update = function (filename, filecontent) {
+  var oldContent = this.getFileContent(filename);
+  var filetype = filename.split('.')[filename.split('.').length - 1];
 
+  this.cssStrings[filetype].replace(oldContent, filecontent);
+  this.updateOutputCss();
+};
+
+CssUpdate.prototype.liveupdateCss = function (newCss) {
+  var oldLinks = [];
+  _.each(document.getElementsByTagName('link'), function (link) {
+    if (link.className === '__meteor-css__') {
+      oldLinks.push(link);
+    }
+  });
+
+  var removeOldLinks = function () {
+    _.each(oldLinks, function (oldLink) {
+      oldLink.parentNode.removeChild(oldLink);
+    });
+  }
+
+  this.injectionNode.innerHTML = newCss;
+  removeOldLinks();
 };
 
 CssUpdate.prototype.setupCssUpdateAutorun = function () {
   var self = this;
-  this.updatorComputation = Tracker.autorun(function () {
+  this.updatorComputation = Tracker.autorun(function (comp) {
     var outputCss = self.outputCss.get();
+    console.log("Updating new CSS", outputCss);
 
-    console.log(outputCss);
+    if (outputCss) {
+      self.liveupdateCss(outputCss);
+    }
   });
+};
+
+CssUpdate.prototype.overrideMeteorCssUpdate = function () {
+  Autoupdate._retrySubscription = function () {
+    return false;
+  }
 };

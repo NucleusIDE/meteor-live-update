@@ -231,7 +231,7 @@ var LiveUpdateFactory = function () {
       this.refreshTemplate(fileContent);
     } else if (filetype === 'js') {
       this.safeEvalJs(fileContent, oldFileContent);
-    } if (filetype === 'css') {
+    } if (_.contains(['css', 'less', 'sass'], filetype)) {
       this.CssUpdate.update(filepath, fileContent);
     }
     else {
