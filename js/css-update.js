@@ -229,9 +229,9 @@ CssUpdate.prototype.updateCssOnPage = function (newCss) {
     _.each(oldLinks, function (oldLink) {
       oldLink.parentNode.removeChild(oldLink);
     });
-  }
+  };
 
-  this.setupInjectionNode();
+  this.setupInjectionNode(); // we need to remove the style element and create new one, otherwise styles won't update on all browsers
   this.injectionNode.innerHTML = newCss;
 
   removeOldLinks();
