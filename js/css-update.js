@@ -21,6 +21,11 @@ CssUpdate = function () {
 };
 
 CssUpdate.prototype.setupInjectionNode = function () {
+  var oldNode = document.getElementById("liveupdate-injection-node");
+  if (oldNode) {
+    oldNode.remove();
+  }
+
   var injectionNode = document.createElement("style");
 
   injectionNode.id = "liveupdate-injection-node";
@@ -155,6 +160,10 @@ CssUpdate.prototype.updateOutputCss = function () {
         if (err) {
           throw err;
         }
+        console.log("Updating CSS in LESS");
+        if (res.css == self.outputCss.get()) {
+          console.log("New css is same as old. Bitch!");
+        }
         self.outputCss.set(res.css);
       })
     }
@@ -172,7 +181,8 @@ CssUpdate.prototype.update = function (filename, filecontent) {
   var oldContent = this.getFileContent(filename);
   var filetype = filename.split('.')[filename.split('.').length - 1];
 
-  this.cssStrings[filetype].replace(oldContent, filecontent);
+  this.cssStrings[filetype] = this.cssStrings[filetype].replace(oldContent, filecontent);
+
   this.updateOutputCss();
 };
 
@@ -190,24 +200,28 @@ CssUpdate.prototype.liveupdateCss = function (newCss) {
     });
   }
 
+  this.setupInjectionNode();
   this.injectionNode.innerHTML = newCss;
+
   removeOldLinks();
 };
 
 CssUpdate.prototype.setupCssUpdateAutorun = function () {
   var self = this;
-  this.updatorComputation = Tracker.autorun(function (comp) {
-    var outputCss = self.outputCss.get();
-    console.log("Updating new CSS", outputCss);
-
-    if (outputCss) {
-      self.liveupdateCss(outputCss);
-    }
-  });
+  this.updatorComputation = Tracker.autorun(
+    function (comp) {
+      var outputCss = self.outputCss.get();
+      console.log("autorun running");
+      if (outputCss) {
+        self.liveupdateCss(outputCss);
+      } else {
+        console.log("No CSS to Update");
+      }
+    });
 };
 
 CssUpdate.prototype.overrideMeteorCssUpdate = function () {
   Autoupdate._retrySubscription = function () {
     return false;
-  }
+  };
 };
