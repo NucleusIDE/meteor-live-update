@@ -149,7 +149,7 @@ CssUpdate.prototype.getUnfoldedPreprocessorCode = function () {
 };
 
 CssUpdate.prototype.updateOutputCss = function () {
-  var css = this.cssStrings.css || '';
+  var css = this._resolvePathsToAbsolute(this.cssStrings.css) || '';
   var preprocessorUsed = this.getPreprocessorUsed();
 
   if (_.contains(preprocessorUsed, 'less') || _.contains(preprocessorUsed, 'sass')) {
@@ -161,17 +161,16 @@ CssUpdate.prototype.updateOutputCss = function () {
         if (err) {
           throw err;
         }
-        console.log('setting new less code');
         if (res.css === self.outputCss.get()) {
           console.log('new Css is same ');
         }
 
-        self.outputCss.set(res.css);
+        self.outputCss.set(self._resolvePathsToAbsolute(res.css));
       });
     }
     else if (_.contains(preprocessorUsed, 'sass')) {
       this.Transcompiler.Sass.compile(prepCode, function (css) {
-        self.outputCss.set(css);
+        self.outputCss.set(self._resolvePathsToAbsolute(css));
       });
     }
   } else {
@@ -197,19 +196,28 @@ CssUpdate.prototype._markContent = function(content, filename) {
   return result;
 };
 
+CssUpdate.prototype._resolvePathsToAbsolute = function(cssContent) {
+  return cssContent.replace(/url\s*\(\s*(['"]?)([^"'\)]*)\1\s*\)/gi, function(match, location) {
+    match = match.replace(/\s/g, '');
+    var url = match.slice(4, -1).replace(/"|'/g, '').replace(/\\/g, '/');
+
+    if (/^\/|https:|http:|data:/i.test(url) === false) {
+      return 'url('+ Meteor.absoluteUrl()  +')';
+    }
+
+    return match;
+  });
+};
+
 CssUpdate.prototype.update = function (filename, filecontent) {
-  console.log('got new content to update');
   var oldContent = this.getFileContent(filename);
   var filetype = filename.split('.')[filename.split('.').length - 1];
 
   this.cssStrings[filetype] = this.cssStrings[filetype].replace(oldContent, this._markContent(filecontent, filename));
-  console.log('going to call updateOutputCss');
   this.updateOutputCss();
 };
 
 CssUpdate.prototype.updateCssOnPage = function (newCss) {
-  console.log("New css is", newCss);
-
   var oldLinks = [];
   _.each(document.getElementsByTagName('link'), function (link) {
     if (link.className === '__meteor-css__') {
@@ -234,11 +242,10 @@ CssUpdate.prototype.setupCssUpdateAutorun = function () {
   this.updatorComputation = Tracker.autorun(
     function (comp) {
       var outputCss = self.outputCss.get();
-      console.log("autorun running");
       if (outputCss) {
         self.updateCssOnPage(outputCss);
       } else {
-        console.log("No CSS to Update");
+        // console.log("No CSS to Update");
       }
     });
 };
