@@ -26,6 +26,35 @@ CssUpdate.prototype._createInjectionNode = function(newCss) {
   return injectionNode;
 };
 
+CssUpdate.prototype._markContent = function(content, filename) {
+  var result = "\n/* " +
+        "START FILE: " +
+        filename +
+        " */ \n";
+
+  result += content;
+
+  result += "/*" +
+    "END FILE: " +
+    filename +
+    " */\n";
+
+  return result;
+};
+
+CssUpdate.prototype._resolvePathsToAbsolute = function(cssContent) {
+  return cssContent.replace(/url\s*\(\s*(['"]?)([^"'\)]*)\1\s*\)/gi, function(match, location) {
+    match = match.replace(/\s/g, '');
+    var url = match.slice(4, -1).replace(/"|'/g, '').replace(/\\/g, '/');
+
+    if (/^\/|https:|http:|data:/i.test(url) === false) {
+      return 'url('+ Meteor.absoluteUrl()  + url + ')';
+    }
+
+    return match;
+  });
+};
+
 CssUpdate.prototype.setupInjectionNode = function () {
   this.injectionNode = this._createInjectionNode();
 };
@@ -144,6 +173,7 @@ CssUpdate.prototype.getUnfoldedPreprocessorCode = function () {
 
 CssUpdate.prototype.updateOutputCss = function () {
   var css = this._resolvePathsToAbsolute(this.cssStrings.css) || '';
+
   var preprocessorUsed = this.getPreprocessorUsed();
 
   if (_.contains(preprocessorUsed, 'less') || _.contains(preprocessorUsed, 'sass')) {
@@ -159,12 +189,14 @@ CssUpdate.prototype.updateOutputCss = function () {
           console.log('new Css is same ');
         }
 
-        self.outputCss.set(self._resolvePathsToAbsolute(res.css));
+        css += self._resolvePathsToAbsolute(res.css);
+        self.outputCss.set(css);
       });
     }
     else if (_.contains(preprocessorUsed, 'sass')) {
-      this.Transcompiler.Sass.compile(prepCode, function (css) {
-        self.outputCss.set(self._resolvePathsToAbsolute(css));
+      this.Transcompiler.Sass.compile(prepCode, function (resCss) {
+        css += self._resolvePathsToAbsolute(resCss);
+        self.outputCss.set(css);
       });
     }
   } else {
@@ -172,35 +204,6 @@ CssUpdate.prototype.updateOutputCss = function () {
   }
 
   return css;
-};
-
-CssUpdate.prototype._markContent = function(content, filename) {
-  var result = "\n/* " +
-        "START FILE: " +
-        filename +
-        " */ \n";
-
-  result += content;
-
-  result += "/*" +
-    "END FILE: " +
-    filename +
-    " */\n";
-
-  return result;
-};
-
-CssUpdate.prototype._resolvePathsToAbsolute = function(cssContent) {
-  return cssContent.replace(/url\s*\(\s*(['"]?)([^"'\)]*)\1\s*\)/gi, function(match, location) {
-    match = match.replace(/\s/g, '');
-    var url = match.slice(4, -1).replace(/"|'/g, '').replace(/\\/g, '/');
-
-    if (/^\/|https:|http:|data:/i.test(url) === false) {
-      return 'url('+ Meteor.absoluteUrl()  + url + ')';
-    }
-
-    return match;
-  });
 };
 
 CssUpdate.prototype.update = function (filename, filecontent) {
