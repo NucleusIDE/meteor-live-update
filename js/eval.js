@@ -33,7 +33,7 @@ Eval = function () {
       },
       function (code, matches) {
         matches.forEach(function (match) {
-          code = code.replace(match, ';try { ' + match + '} catch(e) { };')
+          code = code.replace(match, ';try { ' + match + '} catch(e) { };');
         });
         return code;
       });

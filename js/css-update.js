@@ -1,7 +1,3 @@
-/**
- * Created by channi on 19/02/15.
- */
-
 CssUpdate = function () {
   var self = this;
 
@@ -20,20 +16,18 @@ CssUpdate = function () {
   this.setupCssUpdateAutorun();
 };
 
-CssUpdate.prototype.setupInjectionNode = function () {
-  var oldNode = document.getElementById("liveupdate-injection-node");
-  if (oldNode) {
-    oldNode.remove();
-  }
-
+CssUpdate.prototype._createInjectionNode = function(newCss) {
   var injectionNode = document.createElement("style");
 
-  injectionNode.id = "liveupdate-injection-node";
+  injectionNode.className = "liveupdate-injection-node";
+  injectionNode.innerHTML = newCss ? newCss : '';
 
   document.head.appendChild(injectionNode);
+  return injectionNode;
+};
 
-  this.injectionNode = injectionNode;
-  return this.injectionNode;
+CssUpdate.prototype.setupInjectionNode = function () {
+  this.injectionNode = this._createInjectionNode();
 };
 
 CssUpdate.prototype.initializeCompilers = function () {
@@ -231,8 +225,10 @@ CssUpdate.prototype.updateCssOnPage = function (newCss) {
     });
   };
 
-  this.setupInjectionNode(); // we need to remove the style element and create new one, otherwise styles won't update on all browsers
+  var oldNode = this.injectionNode;
+  // this.injectionNode = this._createInjectionNode(newCss);
   this.injectionNode.innerHTML = newCss;
+  // oldNode.remove();
 
   removeOldLinks();
 };
