@@ -24,7 +24,10 @@ Package.on_use(function (api, where) {
   ]);
 
   api.add_files([
-    'js/utils.js',
+    'js/utils.js'
+  ]);
+
+  api.add_files([
     'js/eval.js',
     'js/css-update.js',
     'js/live-update.js'

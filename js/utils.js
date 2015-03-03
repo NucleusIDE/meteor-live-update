@@ -21,6 +21,27 @@ Utils = {
 
     return [startPos, pos];
   },
+  getAllMatching: function(str, openPattern, closeChar) {
+    /**
+     * Return all the matches i.e strings starting with openPattern
+     * and contained b/w last char of open pattern and closeChar
+     */
+    var start = str.indexOf(openPattern),
+        matches = [];
+
+    if (start < 0) {
+      console.log('No match for', openPattern);
+      return matches;
+    }
+
+    while (start >= 0) {
+      var matchPos = this.getContainingSubStr(str, openPattern[openPattern.length - 1], closeChar, start+openPattern.length);
+      matches.push(str.substr(matchPos[0], matchPos[1]));
+      start = str.indexOf(openPattern, start+1);
+    }
+
+    return matches;
+  },
   getAllScriptSrc: function(html) {
     // yes we could've used document.scripts but when used it takes some time for document.scripts to update to latest code,
     // like a warmup on app startup
