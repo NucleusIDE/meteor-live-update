@@ -196,7 +196,7 @@ CssUpdate.prototype._resolvePathsToAbsolute = function(cssContent) {
     var url = match.slice(4, -1).replace(/"|'/g, '').replace(/\\/g, '/');
 
     if (/^\/|https:|http:|data:/i.test(url) === false) {
-      return 'url('+ Meteor.absoluteUrl()  +')';
+      return 'url('+ Meteor.absoluteUrl()  + url + ')';
     }
 
     return match;
