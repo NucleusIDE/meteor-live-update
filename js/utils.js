@@ -50,5 +50,20 @@ Utils = {
       var srcRegex = /src=\"([\/\w\.\?\-]*)\"/;
       return script.match(srcRegex)[1];
     }));
+  },
+  markCssContent: function(content, filename) {
+    var result = "\n/* " +
+          "START FILE: " +
+          filename +
+          " */ \n";
+
+    result += content;
+
+    result += "/*" +
+      "END FILE: " +
+      filename +
+      " */\n";
+
+    return result;
   }
 };

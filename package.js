@@ -34,7 +34,8 @@ Package.on_use(function (api, where) {
   ], ['client']);
 
   api.addFiles([
-    'js/collect_css_from_server.js',
+    'js/server/package_collector.js',
+    'js/server/css_collector.js',
   ], ['server']);
 
   api.export && api.export(['LiveUpdate'], ['client']);
