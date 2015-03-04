@@ -8,6 +8,15 @@ PackageCollector = function(rootDir) {
     less: '',
     sass: ''
   };
+
+  var packages = fs.readFileSync(path.resolve(rootDir, '.meteor/packages'), 'utf-8').split('\n');
+
+  this.packages = _.filter(packages, function(pkg) {
+    return pkg.indexOf('#') !== 0 && pkg.indexOf(':') > 0;
+  });
+  this.localPackages = fs.readdirSync(path.resolve(rootDir, 'packages'));
+
+
 };
 
 PackageCollector.prototype.collectLocalPackages = function(packages) {
@@ -67,33 +76,26 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
   return this.cssStrings;
 };
 
+PackageCollector.prototype._isLocalPackage = function(package) {
+  return _.contains(this.localPackages, package);
+};
+
+PackageCollector.prototype.getDependentPackages = function(package) {
+
+};
+
 PackageCollector.prototype.getCollectedCss = function() {
   var rootDir = this.rootDir,
       self = this;
 
   //we read the 3rd party packages used by the app and then we'll collect their dependencies and css
-  var packages = fs.readFileSync(path.resolve(rootDir, '.meteor/packages'), 'utf-8').split('\n');
-  var usedPackages = _.filter(packages, function(pkg) {
-    return pkg.indexOf('#') !== 0 && pkg.indexOf(':') > 0;
+  var usedLocalPackages = this.packages.filter(this._isLocalPackage);
+  var standardPackages = this.packages.filter(function(pkg) {
+    return !self._isLocalPackage(pkg);
   });
 
-  var localPackages = fs.readdirSync(path.resolve(rootDir, 'packages'));
-  var usedLocalPackages = usedPackages.filter(function(pkg) {
-    return _.contains(localPackages, pkg);
-  });
-  var standardPackages = usedPackages.filter(function(pkg) {
-    return !_.contains(localPackages, pkg);
-  });
-
-  var _getDependentPackages = function(package) {
-    console.log("Finding dependencies of", package);
-    return package;
-  };
-
-  standardPackages = standardPackages.map(_getDependentPackages);
-
-  this.collectLocalPackages(localPackages);
-  this.collectLocalPackages(localPackages);
+  this.collectLocalPackages(this.localPackages);
+  this.collectLocalPackages(this.localPackages);
 
   return this.cssStrings;
 };
