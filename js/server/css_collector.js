@@ -26,7 +26,7 @@ var CssCollector = function() {
 
       self._collectCss(self.cssLoadList);
     }
-  }, 200);
+  }.bind(this), 200);
 };
 
 CssCollector.prototype._setRootDir = function() {
@@ -85,7 +85,7 @@ CssCollector.prototype._collectCss = function(fileList) {
     });
   });
 
-  var packageCss = this.PackageCollector.getCollectedCss();
+  var packageCss = self.PackageCollector.getCollectedCss();
   Object.keys(packageCss).forEach(function(key) {
     self.cssStrings[key] += packageCss[key];
   });

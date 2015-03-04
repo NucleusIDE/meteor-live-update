@@ -15,8 +15,6 @@ PackageCollector = function(rootDir) {
     return pkg.indexOf('#') !== 0 && pkg.indexOf(':') > 0;
   });
   this.localPackages = fs.readdirSync(path.resolve(rootDir, 'packages'));
-
-
 };
 
 PackageCollector.prototype.collectLocalPackages = function(packages) {
@@ -55,6 +53,10 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
       rootDir = this.rootDir;
 
   packages.forEach(function(package) {
+    if (typeof package !== 'string') {
+      throw new Meteor.Error('Invalid Argument. Require String, got ' + package);
+    }
+
     var name = package.split('@')[0],
         version = package.split('@')[1];
 
@@ -63,9 +65,9 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
 
     var files = packageJson.resources.filter(function(file) {
       return /css|less|sass/.test(file.type);
-    }.map(function(file) {
+    }).map(function(file) {
       return path.resolve(packagePath, file);
-    }));
+    });
 
     files.forEach(function(file) {
       var fileSplit = file.split('.');
@@ -80,22 +82,40 @@ PackageCollector.prototype._isLocalPackage = function(package) {
   return _.contains(this.localPackages, package);
 };
 
-PackageCollector.prototype.getDependentPackages = function(package) {
+PackageCollector.prototype.getDependentPackages = function(pkg) {
+  var packages = [],
+      rootDir = this.rootDir;
 
+  if (this._isLocalPackage(pkg)) {
+    console.log("Should read ", path.resolve(rootDir, 'packages', pkg, 'package.js'));
+    packages.push(pkg);
+  } else {
+    var name = pkg.split('@')[0],
+        version = pkg.split('@')[1],
+        packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version);
+
+    console.log("Should read ", path.resolve(packagePath, 'web.browser.json'));
+    packages.push(pkg);
+  }
+
+  return packages;
 };
 
 PackageCollector.prototype.getCollectedCss = function() {
   var rootDir = this.rootDir,
       self = this;
 
-  //we read the 3rd party packages used by the app and then we'll collect their dependencies and css
-  var usedLocalPackages = this.packages.filter(this._isLocalPackage);
-  var standardPackages = this.packages.filter(function(pkg) {
+  var allPackages = _.flatten(_.map(this.packages, function(pkg) {
+    return self.getDependentPackages(pkg);
+  }));
+
+  var localPackages = allPackages.filter(self._isLocalPackage);
+  var standardPackages = allPackages.filter(function(pkg) {
     return !self._isLocalPackage(pkg);
   });
 
-  this.collectLocalPackages(this.localPackages);
-  this.collectLocalPackages(this.localPackages);
+  this.collectLocalPackages(localPackages);
+  this.collectStandardPackages(standardPackages);
 
   return this.cssStrings;
 };
