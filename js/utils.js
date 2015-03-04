@@ -35,8 +35,8 @@ Utils = {
     }
 
     while (start >= 0) {
-      var matchPos = this.getContainingSubStr(str, openPattern[openPattern.length - 1], closeChar, start+openPattern.length);
-      matches.push(str.substr(matchPos[0], matchPos[1]));
+      var matchPos = this.getContainingSubStr(str, openPattern[openPattern.length - 1], closeChar, start);
+      matches.push(str.substr(matchPos[0], matchPos[1]-(matchPos[0] + 1)));
       start = str.indexOf(openPattern, start+1);
     }
 

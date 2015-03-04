@@ -79,26 +79,61 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
 };
 
 PackageCollector.prototype._isLocalPackage = function(package) {
-  return _.contains(this.localPackages, package);
+  return _.contains(this.localPackages, package.split('@')[0]);
 };
 
 PackageCollector.prototype.getDependentPackages = function(pkg) {
   var packages = [],
-      rootDir = this.rootDir;
+      rootDir = this.rootDir,
+      excludedPackages = ['iron:router'];
+
+  if (_.contains(excludedPackages, pkg)) {
+    return packages;
+  }
 
   if (this._isLocalPackage(pkg)) {
-    console.log("Should read ", path.resolve(rootDir, 'packages', pkg, 'package.js'));
-    packages.push(pkg);
+    pkg = pkg.split('@')[0];
+    var packagePath = path.resolve(rootDir, 'packages', pkg, 'package.js'),
+        packageJs = fs.readFileSync(packagePath, 'utf-8');
+
+    var usedPackages = _.flatten(Utils.getAllMatching(packageJs, 'api.use([', ']').map(function(packages) {
+      //remove extra chars from package names and split them to individual package names
+      return packages.replace(/\'|\"|\n|\s+/g, '').split(',').map(function(pkg) {
+        //check for || in package version and include latest package
+        if (pkg.indexOf('||') >= 0) {
+          var pkgSplit = pkg.split('@'),
+              verSplit = pkgSplit[1].split('||');
+
+          var name = pkgSplit[0],
+              version = verSplit[verSplit.length-1];
+
+          pkg = [name, '@', version].join('');
+        }
+        return pkg;
+      }).filter(function(pkg) {
+        //filter standard meteor packages
+        return pkg.indexOf(':') > 0 && !_.contains(excludedPackages, pkg.split('@')[0]);
+      });
+    }));
+    packages.push(usedPackages);
   } else {
     var name = pkg.split('@')[0],
         version = pkg.split('@')[1],
-        packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version);
+        packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version, 'web.browser.json'),
+        packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
 
-    console.log("Should read ", path.resolve(packagePath, 'web.browser.json'));
-    packages.push(pkg);
+    if (!packageJson) {
+      return packages;
+    }
+
+    var usedPackages = packageJson.uses.filter(function(pkg) {
+      return pkg.package.indexOf(':') >= 0 && !_.contains(excludedPackages, pkg.package);
+    }).map(function(pkg) {
+      return pkg.package + ':' + pkg.contstraint;
+    });
   }
 
-  return packages;
+  return _.uniq(_.flatten(packages));
 };
 
 PackageCollector.prototype.getCollectedCss = function() {
