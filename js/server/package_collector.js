@@ -141,10 +141,15 @@ PackageCollector.prototype.getCollectedCss = function() {
       self = this;
 
   var allPackages = _.flatten(_.map(this.packages, function(pkg) {
-    return self.getDependentPackages(pkg);
+    return [pkg, self.getDependentPackages(pkg)];
   }));
 
-  var localPackages = allPackages.filter(self._isLocalPackage);
+  var localPackages = allPackages.filter(function(pkg) {
+    return self._isLocalPackage(pkg);
+  }).map(function(pkg) {
+    return pkg.split('@')[0];
+  });
+
   var standardPackages = allPackages.filter(function(pkg) {
     return !self._isLocalPackage(pkg);
   });

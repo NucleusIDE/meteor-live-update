@@ -87,7 +87,7 @@ CssUpdate.prototype.updateCssStrings = function () {
     }
 
     self.cssStrings = res;
-  })
+  });
 };
 CssUpdate.prototype.updateCssLoadList = function (cb) {
   var self = this;

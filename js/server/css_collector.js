@@ -24,7 +24,12 @@ var CssCollector = function() {
     if (self.cssLoadList.length) {
       Meteor.clearInterval(cssInterval);
 
-      self._collectCss(self.cssLoadList);
+      self.collectCss(self.cssLoadList);
+
+      var packageCss = self.PackageCollector.getCollectedCss();
+      Object.keys(packageCss).forEach(function(key) {
+        self.cssStrings[key] += packageCss[key];
+      });
     }
   }.bind(this), 200);
 };
@@ -75,7 +80,7 @@ CssCollector.prototype._markContent = function(content, filename) {
   return Utils.markCssContent(content, filename);
 };
 
-CssCollector.prototype._collectCss = function(fileList) {
+CssCollector.prototype.collectCss = function(fileList) {
   var self = this;
 
   fileList.forEach(function(file) {
@@ -83,11 +88,6 @@ CssCollector.prototype._collectCss = function(fileList) {
       var key = file.split('.')[file.split('.').length - 1];
       self.cssStrings[key] += self._markContent(res, file);
     });
-  });
-
-  var packageCss = self.PackageCollector.getCollectedCss();
-  Object.keys(packageCss).forEach(function(key) {
-    self.cssStrings[key] += packageCss[key];
   });
 };
 
