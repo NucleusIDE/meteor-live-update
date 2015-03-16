@@ -30,7 +30,6 @@ Utils = {
         matches = [];
 
     if (start < 0) {
-      console.log('No match for', openPattern);
       return matches;
     }
 
