@@ -60,7 +60,17 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
     var name = package.split('@')[0],
         version = package.split('@')[1];
 
-    var packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version);
+    try {
+      //XXX: hack
+      var packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version);
+    } catch (e) {
+      console.log("Invalid path for collecting CSS for package", package);
+    };
+
+    if (!packagePath) {
+      return '';
+    }
+
     var packageJson = JSON.parse(fs.readFileSync(path.resolve(packagePath, 'web.browser.json'), 'utf-8'));
 
     var files = packageJson.resources.filter(function(file) {
@@ -118,9 +128,17 @@ PackageCollector.prototype.getDependentPackages = function(pkg) {
     packages.push(usedPackages);
   } else {
     var name = pkg.split('@')[0],
-        version = pkg.split('@')[1],
-        packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version, 'web.browser.json'),
-        packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
+        version = pkg.split('@')[1];
+    try {
+      //XXX: hack
+      var packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version, 'web.browser.json');
+    } catch (e) {
+      console.log("Invalid path for collecting CSS for package", pkg);
+    };
+    if (!packagePath)
+      return '';
+
+    var packageJson = JSON.parse(fs.readFileSync(packagePath, 'utf-8'));
 
     if (!packageJson) {
       return packages;
