@@ -65,13 +65,16 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
       throw new Meteor.Error('Invalid Argument. Require String, got ' + package);
     }
 
-    console.log("Collecting standard package", package);
+    if (R.isEmpty(package)) return;
 
     var name = package.split('@')[0],
         version = package.split('@')[1];
 
+    if (!version) {
+      version = Utils.getLatestPackageVersion(name);
+    }
+
     try {
-      //XXX: hack
       var packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version);
     } catch (e) {
       console.error("Invalid path for collecting CSS for package", package);
@@ -142,11 +145,14 @@ PackageCollector.prototype.getDependentPackages = function(pkg) {
   } else {
     var name = pkg.split('@')[0],
         version = pkg.split('@')[1];
+
+    if (!version)
+      version = Utils.getLatestPackageVersion(name);
+
     try {
-      //XXX: hack
       var packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version, 'web.browser.json');
     } catch (e) {
-      console.log("Invalid path for collecting CSS for package", pkg);
+      console.error("Invalid path for collecting CSS for package", pkg);
     };
     if (!packagePath)
       return '';

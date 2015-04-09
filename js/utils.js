@@ -64,5 +64,32 @@ Utils = {
       " */\n";
 
     return result;
+  },
+  sortVersions: function(a, b) {
+    a = a.split('.'), b= b.split('.');
+
+    var primary = a[0] - b[0],
+        secondary = a[1] - b[1],
+        tertiary = a[2] - b[2];
+
+    if (primary !== 0) return primary;
+    if (secondary !== 0) return secondary;
+    return tertiary;
   }
 };
+
+if (Meteor.isServer) {
+  var path = Npm.require('path'),
+      fs = Npm.require('fs');
+
+  Utils = _.extend(Utils, {
+    getLatestPackageVersion: function(name) {
+      var packageDir = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_')),
+          versions = fs.readdirSync(packageDir),
+          validVersions = R.reject(R.test(/[a-zA-Z]/))(versions),
+          latest = R.last(R.sort(Utils.sortVersions, validVersions));
+
+      return latest;
+    }
+  });
+}
