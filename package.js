@@ -12,7 +12,8 @@ Npm.depends({
 Package.on_use(function (api, where) {
   api.versionsFrom("METEOR@0.9.1");
 
-  api.use(['reload',
+  api.use([
+    'reload',
     'jquery',
     'ui',
     'spacebars-compiler',
@@ -20,7 +21,8 @@ Package.on_use(function (api, where) {
     'underscore',
     'deps',
     'reactive-var',
-    'nucleuside:transcompiler@0.0.1'
+    'nucleuside:transcompiler@0.0.1',
+    'kevohagan:ramda@0.13.0'
   ]);
 
   api.add_files([

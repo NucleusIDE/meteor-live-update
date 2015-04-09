@@ -9,11 +9,19 @@ PackageCollector = function(rootDir) {
     sass: ''
   };
 
-  var packages = fs.readFileSync(path.resolve(rootDir, '.meteor/packages'), 'utf-8').split('\n');
+  var getInstalledPackages = R.pipe(
+    R.split('\n'),
+    R.map(R.trim),
+    R.filter(function(str) {
+      return R.strIndexOf('#', str) !== 0 && R.strIndexOf(':', str) > 0;
+    }));
 
-  this.packages = _.filter(packages, function(pkg) {
-    return pkg.indexOf('#') !== 0 && pkg.indexOf(':') > 0;
-  });
+  this.packages = getInstalledPackages(fs.readFileSync(path.resolve(rootDir, '.meteor/packages'), 'utf-8'));
+
+  /**
+   * The name of the folder with which the local package is saved shall be the same as the name of the package
+   * itself
+   */
   this.localPackages = fs.readdirSync(path.resolve(rootDir, 'packages'));
 };
 
@@ -57,6 +65,8 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
       throw new Meteor.Error('Invalid Argument. Require String, got ' + package);
     }
 
+    console.log("Collecting standard package", package);
+
     var name = package.split('@')[0],
         version = package.split('@')[1];
 
@@ -64,7 +74,7 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
       //XXX: hack
       var packagePath = path.resolve(process.env.HOME, '.meteor/packages/', name.replace(':', '_'), version);
     } catch (e) {
-      console.log("Invalid path for collecting CSS for package", package);
+      console.error("Invalid path for collecting CSS for package", package);
     };
 
     if (!packagePath) {
@@ -76,12 +86,15 @@ PackageCollector.prototype.collectStandardPackages = function(packages) {
     var files = packageJson.resources.filter(function(file) {
       return /css|less|sass/.test(file.type);
     }).map(function(file) {
+      if(_.isObject(file) && file.file)
+        file = file.file;
+
       return path.resolve(packagePath, file);
     });
 
     files.forEach(function(file) {
-      var fileSplit = file.split('.');
-      this.cssStrings[fileSplit[fileSplit.length - 1]] = self.markCssContent(fs.readFileSync(file, 'utf-8'), file);
+      var fileType = R.last(file.split('.'));
+      self.cssStrings[fileType] += Utils.markCssContent(fs.readFileSync(file, 'utf-8'), file);
     });
   });
 
