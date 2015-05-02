@@ -59,7 +59,6 @@ var LiveUpdateFactory = function () {
         Template.body.view = view;
       };
     }
-
     function withNewBodyContent(cb) {
       var bodyTemplateUrl = '/template.main.js',
           promise = $.get(bodyTemplateUrl);
@@ -91,7 +90,6 @@ var LiveUpdateFactory = function () {
       bodyContent += newBodyContent;
       refreshBody(bodyContent);
     };
-
     if (Template.body.view) {
       /**
        * Update the view when not using iron:router. Template.body is null when using iron-router
