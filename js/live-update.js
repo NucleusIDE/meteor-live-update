@@ -63,7 +63,7 @@ var LiveUpdateFactory = function () {
 
     var bodyContent = '';
     this.withNewBodyContent = function(cb) {
-      var bodyTemplateUrl = '/templaste.main.js',
+      var bodyTemplateUrl = '/template.main.js',
           promise = $.get(bodyTemplateUrl);
 
       promise.then(cb);
