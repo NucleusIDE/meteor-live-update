@@ -62,7 +62,22 @@ var LiveUpdateFactory = function () {
     }
 
     var bodyContent = '';
+    this.withNewBodyContent = function(cb) {
+      var bodyTemplateUrl = '/templaste.main.js',
+          promise = $.get(bodyTemplateUrl);
+
+      promise.then(cb);
+
+      console.warn("LiveUpdate'ing. \nSince you're not using iron:router, LiveUpdate expect you to have a main.html file and put all your non-template code in that file.\nIt won't work without it");
+
+    };
     var updateBodyContent = function (js) {
+      /**
+       * We need the base body content which renders rest of the templates in body. We keep it in bodyContent variable
+       *
+       * @args
+       * js  - javascript which contains `Template.body.addContent` code
+       */
       //we need to reset the body after new templates are evaled. So we keep the "Template.body.addContent" in this.bodyContent and update it with every file
       //and use it in the end
       if (typeof js !== 'string') return;
@@ -92,9 +107,12 @@ var LiveUpdateFactory = function () {
 
 
     if (Template.body.view) {
-      //Template.body is null when using iron-router
+      /**
+       * Update the view when not using iron:router. Template.body is null when using iron-router
+       */
       detachBody();
       resetBody();
+
       refreshBody();
     }
 
