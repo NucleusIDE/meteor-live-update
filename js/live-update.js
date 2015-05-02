@@ -26,7 +26,6 @@ var LiveUpdateFactory = function () {
       Template.body.view._domrange.detach(); //detach the dom of body template from page
       Template.body.view._domrange.destroy(); //I don't think this is needed, I just like the sound of it
     }
-
     function resetBody() {
       delete Template.body;
 
@@ -61,8 +60,7 @@ var LiveUpdateFactory = function () {
       };
     }
 
-    var bodyContent = '';
-    this.withNewBodyContent = function(cb) {
+    function withNewBodyContent(cb) {
       var bodyTemplateUrl = '/template.main.js',
           promise = $.get(bodyTemplateUrl);
 
@@ -71,7 +69,11 @@ var LiveUpdateFactory = function () {
       console.warn("LiveUpdate'ing. \nSince you're not using iron:router, LiveUpdate expect you to have a main.html file and put all your non-template code in that file.\nIt won't work without it");
 
     };
-    var updateBodyContent = function (js) {
+    function refreshBody(bodyContent) {
+      eval(bodyContent);
+      Template.body.renderToDocument();
+    }
+    function updateBodyContent(js) {
       /**
        * We need the base body content which renders rest of the templates in body. We keep it in bodyContent variable
        *
@@ -84,27 +86,11 @@ var LiveUpdateFactory = function () {
 
       var bodyContentRegex = /(Template.body.addContent\([\w\W]*\}\)\)\;)\nMeteor.startup\(/g;
 
+      var bodyContent = '';
       var newBodyContent = js.match(bodyContentRegex) ? js.match(bodyContentRegex)[0].replace('Meteor.startup(', '') : '';
-      bodyContent += newCodyContent;
+      bodyContent += newBodyContent;
+      refreshBody(bodyContent);
     };
-
-    function refreshBody(js) {
-      eval(bodyContent);
-      Template.body.renderToDocument();
-      bodyContent = ''; //we need to reset the self.bodyContent to empty on new refresh
-    }
-
-    function detachIronLayout() {
-      Router._layout.destroy();
-    }
-
-    function refreshIronLayout() {
-      var layoutView = Router._layout.create(),
-          parent = document.body;
-
-      Blaze.render(layoutView, parent);
-    }
-
 
     if (Template.body.view) {
       /**
@@ -112,10 +98,18 @@ var LiveUpdateFactory = function () {
        */
       detachBody();
       resetBody();
-
-      refreshBody();
+      withNewBodyContent(updateBodyContent);
     }
 
+    function detachIronLayout() {
+      Router._layout.destroy();
+    }
+    function refreshIronLayout() {
+      var layoutView = Router._layout.create(),
+          parent = document.body;
+
+      Blaze.render(layoutView, parent);
+    }
     if (typeof Router !== 'undefined' && Router._layout) {
       detachIronLayout();
       refreshIronLayout();
