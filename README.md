@@ -2,15 +2,37 @@ meteor-live-update
 ==================
 
 ##What?
-**Awesomeness**, what else!
-While developing an meteor app, it updates the templates, css (I removed this functionality since meteor itself supports it now), and js without doing a full page refresh. Like Brackets editor does it for simple HTML/CSS.
+`nucleuside:live-update` is a helper package which allow you to hot-push the code into your meteor app. Yup, that means no refreshes for updating your js/html
 
-##Is it really Awesome?
-I don't know. I am not a pro meteor ninja (yet). I am somewhat good in JavaScript, similar with meteor, but my code is in no way perfect.  
-Please feel free to point out the mistakes and tell me the right way to do things. I love to learn and constructive criticism is welcome. It's really simple (and small) code, give it a read. Comments, suggestions, advice (technical and non-technical) are welcome.
+## A little too twist
+This package is a part of Nucleus(IDE). Nucleus is an in-browser editor for collaboratively developing meteor apps in power mode. It's awesome, but at pre alpha for now. Nucleus has direct access to all the app's code right within the browser, which allow it to just hot-push it (using live-update) into the app. But when using an external editor (e.g Sublime Text), we don't have that luxury of direct access to the app. So I am writing this package as a library for hot-loading js/html code for meteor apps, and am working on a generic adaptor package which would use this package and act as a stnadalone hot-loading solution for meteor. I'll update this readme when I am done with that package. Till then, feel free to use `nucleuside:live-update` for building a plugin for your editor. Here's how you can do it:
+
+
+##How to use it?
+* **LiveUpdate.configure()**
+  ```js
+  LiveUpdate.configure({
+    interceptReload: true  //do not reload the app on changes, because you're doing it. Defaults to true
+  });
+  ```
+That's about all for the configuration for now. It exposes two functions to hot push cod:
+
+* **LiveUpdate.pushHtml(rawHtml)**
+  `rawHtml` is the HTML of your template. All the HTML passed to this function should be contained in one or more `<template name="whatever">...</template>` tags. 
+
+* **LiveUpdate.pushJs(newJs, oldJs)**
+  This method expect you to pass it the code of a whole file, and it expect old code along with new. Why `newJs` and `oldJs` you ask? Well, **this package do not hot-swap the js code in meteor app**. Don't take your hopes too high. It simply eval the new code. Some code can't be evaled more than once in one session (i.e without refresh), like code which create collections, autoruns etc. For handling such special cases, it need the old code to compare against. Bear with me there, there are better ways of doing this, I am just trying to get the whole house of cards standing first. We'll optimize when needed. Any pull requests or suggestions for improvement are more than welcome.
+
+### But how to send new code to LiveUpdate?
+Well, LiveUpdate lives in the meteor app, to send code to LiveUpdate you'll need to send the code to the app itself somehow. From the top of my head right now, you can create a server side route which accepts html/js code and save it in a collection. From that collection, the code is recieved by `LiveUpdate` on the client side of the app, and passed to it's appropriate function. Simple, eh? You can wait on me to implement this (may be coming weekend) or if you are too eager, please go ahead and do it. 
+
+
+## What about CSS/SASS/LESS?
+I think meteor does fairly good job at updating them (call it bragging, but this package had a naive but working implementation of that feature way before meteor added it officially).
 
 ### Demo 
-Here's a video of editing `todos` example app with this package.
+Here's a video of editing `todos` example app with this package. This is an old video, new live-update works better than what's shown in there. I'll create a new demo once I am done with the generic adaptor package for hot-loading code in meteor.
+
 [![IMAGE ALT TEXT HERE](http://img.youtube.com/vi/Q9M2YLiF-Q4/0.jpg)](http://www.youtube.com/watch?v=Q9M2YLiF-Q4)
 
 ##How to install it?
@@ -18,53 +40,24 @@ Here's a video of editing `todos` example app with this package.
 meteor add nucleuside:live-update
 ```
 
-##How to use it?
-Just start developing your app. It'll come into action when you change something. It's more or less an intended replacement for Reload package. But it's too young, so here's an option to comment out/handle the eval breaking code. Most of the time we need to comment it out, so that we can eval rest of the js file properly.
-
-* **LiveUpdate.beforeUpdate()**  
-  You can pass a regexp or a function (or an array of those) to this function. The regexp is matched with each js file before eval, and matched code is commented out. If the argument is function, this function is given the code of the js file before eval and it should return a string. String returned by this function will then be commented out before the eval.  
-  Example:
-  ```js
-  LiveUpdate.beforeUpdate([
-    //let's not recreate collections (meteor complains if we try to do so). We can comment it out
-    // since collection would already be created when user first loads the app
-      /[\w\s]*=[\s]*new (Mongo|Meteor).Collection\([\W\w\.\);]*?\n/gm,
-    function(str) {
-    //when meteor methods are defined client side, meteor complains when we eval these. So let's comment them out too
-      var start = str.indexOf('Meteor.methods({');
-      if(start < 0) return false;
-
-      var matchPos = Utils.getContainingSubStr(str,'(', ')', start);
-
-      return str.substring(start, matchPos[1]);
-    }
-  ]);
-  ```
-  
-* **LiveUpdate.configure()**
-  ```js
-  LiveUpdate.configure({
-    disable: false, //disable this package altogether. Defaults to false
-    debug: false  //log extra stuff. Helpful for identifying code to put in LiveUpdate.beforeUpdate() to prevent LiveUpdate from breaking in your app
-  });
-  ```
-
 ##How do it work?
 This is how series of events happen to get this package working.
 
 * You make a change in the app
-* Meteor detects the change, rebuild the app and make a call for refreshing the page
-* We catch that call and stop the reload
-* At this point meteor has everything ready (HTML compiled to js and all)
-* We fetch all scripts required for the page for eval
-* Before evaling each js file, we comment out certain code that might cause the eval to fail (for now it's collection creation and Meteor.methods)
-* Function/regex given in `LiveUpdate.beforeUpdate(...)` are executed and commented out before eval
-* We eval the script
-* After all the eval is done, we teardown the view and re-render it with new Templates/js (I know this is not optimal, and we can do it for individual templates with little more work, but this works without any visual difference, so I thought to do re-render-changed-template-only at later stage)
-* Page is updated 😃
+* You send the new code to appropriate `LiveUpdate` method for hot push
+* Done.
 
-##I Want CSS Live update, but no js. It's buggy
-Meteor supports this feature now, so I've removed it from this package.
+**Come on, seriously, how do this shit work?**
+Ain't you the polite one? Well, this is roughly how it works:
+
+* For Javascript code
+  * **NOTE** The **code is not hot swapped**, it is evaled
+  * The code given to `LiveUpdate.pushJs(newJs, oldJs)` is passed through a series of patches which take care of code for creating events (so it won't create events multiple times), creating collections (can't re-create already existing collection), autoruns (same as events) etc etc.
+  * The patches return cleansed code which is then `eval`ed.
+* For html code
+  * The html given to `LiveUpdate.pushHtml(rawHtml)` is parsed for `<template>` tags
+  * We create new `Template`s for each `<template>` tag found in given html, over-writing already present templates with same name
+  * We re-render entire page. This is bit hackhis, more optimal would be to re-render only the changed templates. May be at some later time.
 
 # Known Issues
 * Packages that use `Reload._onMigrate` might not work, because this package catches the call it receives and never let it go ahead (otherwise page will reload)
@@ -74,3 +67,8 @@ Meteor supports this feature now, so I've removed it from this package.
       Iditos = new Mongo.Collection("idiots")
       ```
       then you'll need to refresh the page. Meteor doesn't allow creating same collection twice, because of which evaling this line cause eval on other code to fail as well. Because of this, we simply comment out these lines when updating js live (for now). Better solutions are of course possible.
+
+# Known areas that need improvements
+* We re-render the entire page on a template update, this can certainly be improved
+* We eval the js, may be we can hot-swap code somehow? But how?
+* Even if hot-swapping is not possible (too much mutability and shit), this package use `regexp`s to detect conflicting code (in patches, read how it works above). I mean like, can you believe that? Regexps for detecting code? I must be nuts or something. This needs to be moved to something more sophisticated, esprima or something.
