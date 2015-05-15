@@ -1,12 +1,8 @@
 Package.describe({
   summary: "Live update the changes in browser without full page reload",
-  version: "0.3.0",
+  version: "0.3.1",
   name: "nucleuside:live-update",
   git: 'https://github.com/nucleuside/meteor-live-update.git'
-});
-
-Npm.depends({
-  'recursive-readdir': '1.2.1'
 });
 
 Package.on_use(function (api, where) {
