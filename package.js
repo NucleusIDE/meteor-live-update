@@ -21,24 +21,13 @@ Package.on_use(function (api, where) {
     'underscore',
     'deps',
     'reactive-var',
-    'nucleuside:transcompiler@0.0.1',
     'kevohagan:ramda@0.13.0'
   ]);
 
   api.add_files([
-    'js/utils.js'
-  ]);
-
-  api.add_files([
     'js/eval.js',
-    'js/css-update.js',
     'js/live-update.js'
   ], ['client']);
-
-  api.addFiles([
-    'js/server/package_collector.js',
-    'js/server/css_collector.js',
-  ], ['server']);
 
   api.export && api.export(['LiveUpdate'], ['client']);
 });
