@@ -195,7 +195,7 @@ Eval.prototype.eval = function (code, oldCode) {
   try {
     eval(code);
   } catch (e) {
-    console.error("Failed to eval code:", e.message);
+    throw(new Error(e));
   }
-  this._postEval()
+  this._postEval();
 };

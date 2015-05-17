@@ -21,7 +21,6 @@ var LiveUpdateFactory = function () {
         Autoupdate.newClientAvailable();
 
         if (! self.config.interceptReload) {
-          console.log("Not intercepting reload");
           should_reload = true;
           return;
         }
@@ -207,12 +206,26 @@ LiveUpdateFactory.prototype.pushJs = function (newJs, oldJs) {
   if (!newJs) {
     return;
   }
-  this.Eval.eval(newJs, oldJs);
+  try {
+    this.Eval.eval(newJs, oldJs);
+  } catch (e) {
+    console.error("Will refresh page. Failed to eval code.");
+    this.forceRefreshPage();
+  }
   this._reRenderPage();
 };
 
 LiveUpdateFactory.prototype.addFileHandler = function(filetype, handler) {
   this._fileHandlers[filetype] = handler;
+};
+
+LiveUpdateFactory.prototype.forceRefreshPage = function() {
+  //FIXME: This is not the way to reload the page.
+  //Reload the page only after meteor has refreshed client after changes
+  window.location.reload();
+
+  // console.log("Reloading with Reload._reload()");
+  // Reload._reload();
 };
 
 LiveUpdate = new LiveUpdateFactory();
