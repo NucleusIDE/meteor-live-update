@@ -150,7 +150,7 @@ LiveUpdateFactory.prototype.refreshFile = function (options) {
   if (typeof this._fileHandlers[fileType] === 'function') {
     return this._fileHandlers[fileType](options);
   } else {
-    console.log("LiveUpdate doesn't know how to treat a", filetype, "file");
+    console.log("LiveUpdate doesn't know how to treat a", fileType, "file");
   }
 };
 
@@ -210,6 +210,7 @@ LiveUpdateFactory.prototype.pushJs = function (newJs, oldJs) {
     this.Eval.eval(newJs, oldJs);
   } catch (e) {
     console.error("Will refresh page. Failed to eval code.");
+    console.error(e);
     this.forceRefreshPage();
   }
   this._reRenderPage();
