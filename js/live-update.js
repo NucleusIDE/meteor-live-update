@@ -95,7 +95,7 @@ LiveUpdateFactory.prototype._reRenderPage = function () {
 
     promise.then(cb);
 
-    console.warn("LiveUpdate'ing. \nSince you're not using iron:router, LiveUpdate expect you to have a main.html file and put all your non-template code in that file.\nIt won't work without it");
+//    console.warn("LiveUpdate'ing. \nSince you're not using iron:router, LiveUpdate expect you to have a main.html file and put all your non-template code in that file.\nIt won't work without it");
 
   };
   function refreshBody(bodyContent) {
