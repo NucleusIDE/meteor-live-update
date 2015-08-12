@@ -223,10 +223,8 @@ LiveUpdateFactory.prototype.addFileHandler = function(filetype, handler) {
 LiveUpdateFactory.prototype.forceRefreshPage = function() {
   //FIXME: This is not the way to reload the page.
   //Reload the page only after meteor has refreshed client after changes
-  window.location.reload();
-
-  // console.log("Reloading with Reload._reload()");
-  // Reload._reload();
+  // window.location.reload();
+  console.error('Refresh canceled because James Gillmore. Failing silently.');
 };
 
 LiveUpdate = new LiveUpdateFactory();
@@ -236,6 +234,7 @@ var htmlHandler = function(options) {
   LiveUpdate.pushHtml(options.newContent);
 };
 var jsHandler = function(options) {
+  console.log('Handling JS FILE: ', options);
   LiveUpdate.pushJs(options.newContent, options.oldContent);
 };
 

@@ -15,28 +15,28 @@ Eval = function () {
   this._override_autorun();
 
   this.registerPatch('eventsCode',
-      function eventDetector(code) {
-        var regex = /Template\.([a-zA-Z_\$]+)\.events/g;
+                     function eventDetector(code) {
+                       var regex = /Template\.([a-zA-Z_\$]+)\.events/g;
 
-        var match = regex.exec(code);
-        return match ? match[1] : false;
-      },
-      function eventNeutralizer(code, templateName) {
-        Template[templateName].__eventMaps = [];
-        return code;
-      });
+                       var match = regex.exec(code);
+                       return match ? match[1] : false;
+                     },
+                     function eventNeutralizer(code, templateName) {
+                       Template[templateName].__eventMaps = [];
+                       return code;
+                     });
 
   this.registerPatch('creatingCollection',
-      function (code) {
-        var regex = /[\w\s]*=[\s]*new[\s]*(Mongo|Meteor)\.Collection\([\'\"\w\d]*\)\;/mg;
-        return code.match(regex);
-      },
-      function (code, matches) {
-        matches.forEach(function (match) {
-          code = code.replace(match, ';try { ' + match + '} catch(e) { };');
-        });
-        return code;
-      });
+                     function (code) {
+                       var regex = /[\w\s]*=[\s]*new[\s]*(Mongo|Meteor)\.Collection\([\'\"\w\d]*\)\;/mg;
+                       return code.match(regex);
+                     },
+                     function (code, matches) {
+                       matches.forEach(function (match) {
+                         code = code.replace(match, ';try { ' + match + '} catch(e) { };');
+                       });
+                       return code;
+                     });
 
   this.registerPatch('ironRouterCode', {
     detector: function (code) {
@@ -55,46 +55,46 @@ Eval = function () {
   })
 
   this.registerPatch('autoruns',
-      function autorunDetector(newCode, oldCode) {
-        var getAutorunFunc = function (index, oldCode) {
-          index = index || 0;
-          var start = oldCode.indexOf('Deps.autorun', index) > -1 ? oldCode.indexOf('Deps.autorun', index) : oldCode.indexOf('Tracker.autorun', index);
-          if (start < 0) return false;
+                     function autorunDetector(newCode, oldCode) {
+                       var getAutorunFunc = function (index, oldCode) {
+                         index = index || 0;
+                         var start = oldCode.indexOf('Deps.autorun', index) > -1 ? oldCode.indexOf('Deps.autorun', index) : oldCode.indexOf('Tracker.autorun', index);
+                         if (start < 0) return false;
 
-          var matchPos = Utils.getContainingSubStr(oldCode, '(', ')', start);
-          return {
-            autorunFunc: oldCode.substring(start, matchPos[1] - 1).replace('Deps.autorun(', '').replace('Tracker.autorun(', ''),
-            index: start
-          };
-        };
+                         var matchPos = Utils.getContainingSubStr(oldCode, '(', ')', start);
+                         return {
+                           autorunFunc: oldCode.substring(start, matchPos[1] - 1).replace('Deps.autorun(', '').replace('Tracker.autorun(', ''),
+                           index: start
+                         };
+                       };
 
-        var matches = [];
-        var match = getAutorunFunc(0, oldCode);
-        while (match !== false) {
-          matches.push(match.autorunFunc);
-          match = getAutorunFunc(match.index + 1, oldCode);
-        }
+                       var matches = [];
+                       var match = getAutorunFunc(0, oldCode);
+                       while (match !== false) {
+                         matches.push(match.autorunFunc);
+                         match = getAutorunFunc(match.index + 1, oldCode);
+                       }
 
-        return matches;
-      },
-      function autorunNeutralizer(code, matches) {
-        if (!matches.length)
-          return code;
+                       return matches;
+                     },
+                     function autorunNeutralizer(code, matches) {
+                       if (!matches.length)
+                         return code;
 
 
-        matches.forEach(function (autorunFunc) {
-          self.autoruns.forEach(function (computation, i) {
-            var compFunc = computation._func.toString().replace(/[\r\n\s]+/mg, '');
-            autorunFunc = autorunFunc.replace(/\s/g, '');
+                       matches.forEach(function (autorunFunc) {
+                         self.autoruns.forEach(function (computation, i) {
+                           var compFunc = computation._func.toString().replace(/[\r\n\s]+/mg, '');
+                           autorunFunc = autorunFunc.replace(/\s/g, '');
 
-            if (compFunc === autorunFunc) {
-              computation.stop();
-            }
-          });
-        });
+                           if (compFunc === autorunFunc) {
+                             computation.stop();
+                           }
+                         });
+                       });
 
-        return code;
-      });
+                       return code;
+                     });
 };
 
 Eval.prototype._override_autorun = function () {
@@ -138,7 +138,7 @@ Eval.prototype.registerPatch = function (patchName, detector, neutralizer, postE
     detector: detector,
     neutralizer: neutralizer,
     postEval: postEval
-  }
+  };
 };
 
 Eval.prototype._getPatchFunc = function (patchName, funcName) {
@@ -178,13 +178,16 @@ Eval.prototype._neutralizeCode = function (code, oldCode) {
   return code;
 };
 
-Eval.prototype._postEval = function () {
+Eval.prototype._postEval = function (code, oldCode) {
   var self = this;
   Object.keys(this.patches).forEach(function (patch) {
-    var func = self._getPatchFunc(patch, 'postEval');
-    if (func) {
-      func();
-    }
+    var detector = self._getPatchFunc(patch, 'detector'),
+        postEval = self._getPatchFunc(patch, 'postEval');
+
+    if (!postEval) return;
+
+    var match = detector(code, oldCode);
+    if (match) return postEval(code, match);
   });
 };
 
@@ -197,5 +200,5 @@ Eval.prototype.eval = function (code, oldCode) {
   } catch (e) {
     throw(new Error(e));
   }
-  this._postEval();
+  this._postEval(code, oldCode);
 };

@@ -22,7 +22,7 @@ meteor@1.1.6
 minifiers@1.1.5
 minimongo@1.0.8
 mongo@1.1.0
-nucleuside:live-update@0.3.1
+nucleuside:live-update@0.3.2
 observe-sequence@1.0.6
 ordered-dict@1.0.3
 random@1.0.3
