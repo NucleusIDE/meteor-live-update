@@ -1,6 +1,6 @@
 Package.describe({
   summary: "Live update the changes in browser without full page reload",
-  version: "0.3.2",
+  version: "0.3.3",
   name: "nucleuside:live-update",
   git: 'https://github.com/nucleuside/meteor-live-update.git'
 });
